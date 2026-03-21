@@ -1993,6 +1993,28 @@ ${rawHtml}
                     });
                 };
 
+                const editingMessageIndex = ref(-1);
+                const editingMessageContent = ref('');
+
+                const startEditMessage = (index) => {
+                    editingMessageIndex.value = index;
+                    editingMessageContent.value = chatHistory.value[index].content;
+                };
+
+                const saveEditMessage = () => {
+                    if (editingMessageIndex.value >= 0) {
+                        chatHistory.value[editingMessageIndex.value].content = editingMessageContent.value;
+                        editingMessageIndex.value = -1;
+                        editingMessageContent.value = '';
+                        showToast('消息已保存', 'success');
+                    }
+                };
+
+                const cancelEditMessage = () => {
+                    editingMessageIndex.value = -1;
+                    editingMessageContent.value = '';
+                };
+
                 const deleteMessage = (index) => {
                     confirmAction('确定要删除这条消息吗？', () => {
                         const msg = chatHistory.value[index];
@@ -4553,6 +4575,7 @@ ${rawHtml}
                     handleConfirm, handleCancel, // Export handlers
                     manualSave,
                     copyMessage, deleteMessage, regenerateMessage, printAIRequestLogs,
+                    editingMessageIndex, editingMessageContent, startEditMessage, saveEditMessage, cancelEditMessage,
                     createNewCharacter, editCharacter, saveCharacter, deleteCharacter, selectCharacter,
                     isBatchDeleteMode, selectedCharacterIndices, toggleBatchDeleteMode, toggleCharacterSelection, batchDeleteCharacters,
                     getCharacterWICount, getCharacterRegexCount,
