@@ -479,7 +479,9 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                 });
 
                 // --- Persistence (Server API) ---
-                const API_BASE = '/api';
+                // Auto-detect base path so /rp/api, /app/api etc. all work
+                const basePath = window.location.pathname.replace(/\/?$/, '/');
+                const API_BASE = basePath + 'api';
                 const isAuthenticated = ref(false);
                 const loginForm = reactive({ username: '', password: '' });
                 const loginLoading = ref(false);
