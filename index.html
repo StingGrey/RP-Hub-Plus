@@ -12,7 +12,9 @@
         var errors = [];
         window.addEventListener('error', function(e) {
             if (e.target && e.target.tagName) {
-                errors.push('LOAD FAIL: <' + e.target.tagName + '> src=' + (e.target.src || e.target.href || '?'));
+                var src = e.target.src || e.target.href || '';
+                if (src.includes('kaspersky') || src.includes('kis.v2')) return;
+                errors.push('LOAD FAIL: <' + e.target.tagName + '> src=' + src);
             } else {
                 errors.push((e.message||'?') + ' @ ' + (e.filename||'?') + ':' + (e.lineno||'?') + ':' + (e.colno||'?'));
             }
