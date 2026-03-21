@@ -1710,6 +1710,12 @@ ${rawHtml}
                                              .replace(/<\/?body[^>]*>/gi, '');
                     }
                     
+                    // Preserve ASCII art / box-drawing blocks (Status_Bar etc.)
+                    // Detect lines with box-drawing chars and wrap in <pre> to keep formatting
+                    processed = processed.replace(/((?:^|\n)(?:.*[┌┐└┘├┤┬┴┼─│║╔╗╚╝╠╣╦╩╬═╒╓╕╖╘╙╛╜╞╟╡╢╤╧╥╨].*)(?:\n(?:.*[┌┐└┘├┤┬┴┼─│║╔╗╚╝╠╣╦╩╬═╒╓╕╖╘╙╛╜╞╟╡╢╤╧╥╨║│┊┈].*))*)/g, (match) => {
+                        return '\n<pre style="font-family:monospace;white-space:pre;overflow-x:auto;line-height:1.4;margin:0.5em 0">' + match.trim() + '</pre>\n';
+                    });
+
                     let html = DOMPurify.sanitize(marked.parse(processed), cleanConfig);
 
                     // Auto-render HTML code blocks AND escaped HTML texts
