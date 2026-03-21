@@ -1,0 +1,7 @@
+.claude/
+.playwright-mcp/
+*.png
+*.jpg
+!assets/**/*.png
+!assets/**/*.jpg
+node_modules/
