@@ -2039,6 +2039,30 @@ ${rawHtml}
                 };
 
                 // Refactored generation logic
+                // Build reasoning/thinking parameters based on model name
+                const buildReasoningParams = (model, effort) => {
+                    if (!effort || effort === 'off') return {};
+                    const m = model.toLowerCase();
+
+                    // Claude models — use thinking with adaptive mode
+                    if (m.includes('claude')) {
+                        const effortMap = { low: 'low', medium: 'medium', high: 'high', xhigh: 'max' };
+                        return {
+                            thinking: { type: 'adaptive' },
+                            output_config: { effort: effortMap[effort] || 'medium' }
+                        };
+                    }
+
+                    // OpenAI o-series / GPT-5+ — reasoning_effort (supports xhigh on some models)
+                    if (m.includes('o1') || m.includes('o3') || m.includes('o4') || m.includes('gpt-5')) {
+                        return { reasoning_effort: effort === 'xhigh' ? 'xhigh' : effort };
+                    }
+
+                    // Default: reasoning_effort (works with Gemini, OpenRouter, and most OpenAI-compatible APIs)
+                    // xhigh not widely supported, cap to high for safety
+                    return { reasoning_effort: effort === 'xhigh' ? 'high' : effort };
+                };
+
                 const generateResponse = async (startTime = null) => {
                     if (isGenerating.value) return;
                     
@@ -2553,7 +2577,7 @@ ${rawHtml}
                                         messages: messages,
                                         temperature: settings.temperature,
                                         stream: settings.stream,
-                                        ...(settings.reasoningEffort && settings.reasoningEffort !== 'off' ? { reasoning_effort: settings.reasoningEffort } : {})
+                                        ...buildReasoningParams(settings.model, settings.reasoningEffort)
                                     }),
                                     signal: abortController.value.signal
                                 });
