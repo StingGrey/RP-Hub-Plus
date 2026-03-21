@@ -32,7 +32,7 @@
         window.addEventListener('DOMContentLoaded', function() {
             var info = [];
             if (typeof Vue === 'undefined') info.push('Vue NOT loaded');
-            if (typeof marked === 'undefined') info.push('marked NOT loaded');
+            if (typeof markdownit === 'undefined') info.push('markdown-it NOT loaded');
             if (typeof DOMPurify === 'undefined') info.push('DOMPurify NOT loaded');
             if (typeof Sortable === 'undefined') info.push('Sortable NOT loaded');
             if (info.length) { errors.push('MISSING: ' + info.join(', ')); showErrors(); }
@@ -46,7 +46,7 @@
     <!-- <link rel="icon" href="logo.jpg" type="image/jpeg"> -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script>

@@ -1,16 +1,30 @@
 const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
 
-        // Configure marked to disable indented code blocks
-        // This allows indented HTML (like details/summary) to be rendered as HTML instead of code
-        marked.use({
-            breaks: true,
-            tokenizer: {
-                // Disable the indentation-based code block tokenizer
-                code(src) {
-                    return undefined;
-                }
-            }
+        // Initialize markdown-it with plugins
+        const md = markdownit({ html: true, breaks: true, linkify: true, typographer: false });
+
+        // Plugin: Preserve box-drawing / ASCII art blocks
+        md.core.ruler.before('normalize', 'box_drawing', (state) => {
+            state.src = state.src.replace(/([^\n]*[┌╔][─━═]+[┐╗]?[^\n]*[\s\S]*?[^\n]*[└╚][─━═]+[┘╝]?[^\n]*)/g, (m) => {
+                return '\n<pre style="font-family:monospace;white-space:pre;overflow-x:auto;line-height:1.5;font-size:0.85em;background:transparent;border:none;padding:0">' + m.trim() + '</pre>\n';
+            });
         });
+
+        // Plugin: Highlight quoted dialogue
+        function dialogueHighlightPlugin(md) {
+            const defaultRender = md.renderer.rules.text || function(tokens, idx) { return md.utils.escapeHtml(tokens[idx].content); };
+            md.renderer.rules.text = function(tokens, idx, options, env, self) {
+                let content = defaultRender(tokens, idx, options, env, self);
+                // Fullwidth quotes "..."
+                content = content.replace(/\u201c([^\u201d]*)\u201d/g, '<span class="dialogue-quote">\u201c$1\u201d</span>');
+                // Halfwidth quotes "..."
+                content = content.replace(/&quot;([^&]*)&quot;/g, '<span class="dialogue-quote">&quot;$1&quot;</span>');
+                // Corner brackets 「...」
+                content = content.replace(/\u300c([^\u300d]*)\u300d/g, '<span class="dialogue-quote">\u300c$1\u300d</span>');
+                return content;
+            };
+        }
+        md.use(dialogueHighlightPlugin);
 
         createApp({
             setup() {
@@ -1669,7 +1683,7 @@ ${rawHtml}
                         
                         // 1. Render Pre-text (Markdown)
                         if (preText.trim()) {
-                            resultHtml += DOMPurify.sanitize(marked.parse(preText), cleanConfig);
+                            resultHtml += DOMPurify.sanitize(md.render(preText), cleanConfig);
                         }
 
                         // 2. Render Iframe (HTML Card)
@@ -1685,7 +1699,7 @@ ${rawHtml}
 
                         // 3. Render Post-text (Markdown)
                         if (postText.trim()) {
-                            resultHtml += DOMPurify.sanitize(marked.parse(postText), cleanConfig);
+                            resultHtml += DOMPurify.sanitize(md.render(postText), cleanConfig);
                         }
 
                         return resultHtml;
@@ -1709,14 +1723,8 @@ ${rawHtml}
                                              .replace(/<\/?head[^>]*>/gi, '')
                                              .replace(/<\/?body[^>]*>/gi, '');
                     }
-                    
-                    // Preserve ASCII art / box-drawing blocks (Status_Bar etc.)
-                    // Match from a line with ┌/╔ to a line with └/╚, wrap entire block in <pre>
-                    processed = processed.replace(/([^\n]*[┌╔][─━═]+[┐╗]?[^\n]*[\s\S]*?[^\n]*[└╚][─━═]+[┘╝]?[^\n]*)/g, (match) => {
-                        return '<pre style="font-family:monospace;white-space:pre;overflow-x:auto;line-height:1.5;margin:0.5em 0;font-size:0.85em;background:transparent;border:none;padding:0">' + match.trim() + '</pre>';
-                    });
 
-                    let html = DOMPurify.sanitize(marked.parse(processed), cleanConfig);
+                    let html = DOMPurify.sanitize(md.render(processed), cleanConfig);
 
                     // Auto-render HTML code blocks AND escaped HTML texts
                     try {
@@ -1799,13 +1807,6 @@ ${rawHtml}
                     } catch (e) {
                         console.error('Error rendering HTML preview:', e);
                     }
-
-                    // Highlight quoted dialogue (fullwidth and halfwidth quotes)
-                    // Skip content inside <pre>, <code>, <a> tags
-                    html = html.replace(/(<[^>]+>)|(\u201c[^\u201d]*\u201d|\u300c[^\u300d]*\u300d|&ldquo;[^&]*&rdquo;|"[^"]*")/g, (match, tag, quote) => {
-                        if (tag) return tag; // Skip HTML tags
-                        return '<span class="dialogue-quote">' + quote + '</span>';
-                    });
 
                     return html;
                 };
