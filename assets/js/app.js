@@ -1795,10 +1795,17 @@ ${rawHtml}
                             }
                         });
 
-                        if (modified) return doc.body.innerHTML;
+                        if (modified) html = doc.body.innerHTML;
                     } catch (e) {
                         console.error('Error rendering HTML preview:', e);
                     }
+
+                    // Highlight quoted dialogue (fullwidth and halfwidth quotes)
+                    // Skip content inside <pre>, <code>, <a> tags
+                    html = html.replace(/(<[^>]+>)|(\u201c[^\u201d]*\u201d|\u300c[^\u300d]*\u300d|&ldquo;[^&]*&rdquo;|"[^"]*")/g, (match, tag, quote) => {
+                        if (tag) return tag; // Skip HTML tags
+                        return '<span class="dialogue-quote">' + quote + '</span>';
+                    });
 
                     return html;
                 };

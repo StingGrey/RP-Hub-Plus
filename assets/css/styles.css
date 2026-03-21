@@ -102,6 +102,9 @@ html {
         /* Enhanced Markdown Styles */
         .markdown-body strong { font-weight: 700; color: inherit; }
         .markdown-body em { font-style: italic; }
+
+        /* Dialogue quote highlighting */
+        .dialogue-quote { color: #2563eb; }
         .markdown-body h1 { font-size: 1.5em; font-weight: 700; margin-top: 1em; margin-bottom: 0.5em; line-height: 1.2; color: inherit; }
         .markdown-body h2 { font-size: 1.25em; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; line-height: 1.25; color: inherit; }
         .markdown-body h3 { font-size: 1.1em; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; line-height: 1.3; color: inherit; }
