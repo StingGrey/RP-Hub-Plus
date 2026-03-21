@@ -35,11 +35,16 @@ app.use(helmet({
                 "https://unpkg.com",
                 "https://cdn.jsdelivr.net"
             ],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrcAttr: ["'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
             imgSrc: ["'self'", "data:", "blob:", "https:"],
             connectSrc: ["'self'", "https:"],
             frameSrc: ["'self'", "https:", "blob:"],
             fontSrc: ["'self'", "https:", "data:"],
+            formAction: ["'self'"],
+            frameAncestors: ["'self'"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: []
         }
     },
     crossOriginEmbedderPolicy: false
