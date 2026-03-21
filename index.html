@@ -2,6 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>Roleplay Hub</title>
     <!-- <link rel="icon" href="logo.jpg" type="image/jpeg"> -->
@@ -2409,5 +2411,14 @@
 
     <script src="assets/js/utils.js"></script>
     <script src="assets/js/app.js"></script>
+    <script>
+    // Debug: catch Vue init errors and show on page (remove after debugging)
+    window.addEventListener('error', function(e) {
+        var d = document.createElement('div');
+        d.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:red;color:white;padding:12px;font-size:14px;z-index:99999;word-break:break-all';
+        d.textContent = 'JS Error: ' + e.message + ' @ ' + (e.filename||'') + ':' + (e.lineno||'');
+        document.body.appendChild(d);
+    });
+    </script>
 </body>
 </html>
