@@ -3,8 +3,9 @@
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg?logo=vue.js)](https://vuejs.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-22-339933.svg?logo=node.js&logoColor=white)](https://nodejs.org/)
 
-> **一款本地角色扮演（Roleplay）对话和角色卡生成工具。**
+> **一款支持自部署的 AI 角色扮演（Roleplay）对话和角色卡生成工具。**
 
 **基于 [STA1N156/RP-Hub](https://github.com/STA1N156/RP-Hub) 修改。**
 
@@ -12,6 +13,9 @@
 
 ### 相比原项目的修改内容
 
+- 新增 Node.js 后端，数据存储在服务器端 SQLite 数据库
+- 新增安全登录系统（密码 + Passkey/WebAuthn 支持）
+- 防暴力破解（速率限制 + 递进式账户锁定）
 - 新增深色主题（Pure Black / OLED 纯黑风格）
 - 新增外观设置面板，支持 浅色 / 深色 / 跟随系统 三种模式切换
 - 主题偏好持久化存储，跟随系统模式实时响应系统主题变化
@@ -19,62 +23,127 @@
 - 上下文压缩
 
 **【免责与授权声明】**
-本项目基于 **[CC BY-NC 4.0（知识共享-署名-非商业性使用 4.0 国际许可协议）](./LICENSE)** 开源。原始项目由 [STA1N156](https://github.com/STA1N156) 创建。**明确禁止任何形式的商业化使用（包括但不限于：作为收费服务提供、打包在付费产品中售卖、在产品内植入广告盈利等）。** 任何使用者必须遵守该协议，尊重原作者的署名权。对于违反协议的商业行为，保留追究法律责任的权利。
+本项目基于 **[CC BY-NC 4.0（知识共享-署名-非商业性使用 4.0 国际许可协议）](./LICENSE)** 开源。原始项目由 [STA1N156](https://github.com/STA1N156) 创建。**明确禁止任何形式的商业化使用。** 任何使用者必须遵守该协议，尊重原作者的署名权。
 
 ---
 
-## 核心特性 (Features)
+## 部署方式 (Deployment)
 
-Roleplay Hub 致力于提供流畅、私密且功能强大的本地化AI Roleplay体验。
+### 环境要求
 
-## 快速开始 (Quick Start)
+- Node.js 20+ (推荐 22 LTS)
+- 一台服务器（推荐 Linux）
+- 域名 + Caddy（自动 HTTPS）
 
-本项目无需复杂的 Node.js 环境或依赖安装，即开即用！
+### 1. 克隆项目
 
-### 1. 下载与运行
-1. 点击项目主页绿色的 `Code` 按钮，选择 `Download ZIP`。
-2. 将下载的 ZIP 压缩包解压到您的本地任意文件夹中。
-3. 双击打开 `index.html` 文件，即可在浏览器（推荐 Chrome / Edge / Firefox）中启动 Roleplay Hub。
+```bash
+git clone https://github.com/StingGrey/RP-Hub.git
+cd RP-Hub/server
+npm install
+```
 
-*(注：如果您遇到跨域或本地文件读取权限问题，可以尝试使用 VS Code 的 `Live Server` 插件，或简单的本地服务器工具来运行该目录。但在绝大多数现代浏览器中，双击 index.html 即可正常使用所有核心功能。)*
+### 2. 配置环境变量
 
-### 2. 初始化设置
-1. 打开应用后，点击侧边栏（或顶部菜单）的**设置 (Settings)** 选项。
-2. 选择自定义配置，填入您自己的或第三方提供的 API 节点 (`API URL`)。
-3. 填入对应的 `API Key`，并输入或选择您想使用的 `模型名称 (Model)`。
-4. 在**角色管理**界面，导入您的角色卡文件（或点击新建角色并手动填写设定）。
-5. 回到对话界面，开始属于您的 Roleplay 旅程
+```bash
+cp .env.example .env
+```
+
+编辑 `.env`，生成随机密钥：
+
+```bash
+# 生成 SESSION_SECRET (64 字符)
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+
+# 生成 ENCRYPTION_KEY (32 字节 = 64 hex)
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+```env
+PORT=3000
+SESSION_SECRET=<粘贴生成的值>
+ENCRYPTION_KEY=<粘贴生成的值>
+RP_ORIGIN=https://yourdomain.com
+NODE_ENV=production
+```
+
+### 3. 创建用户
+
+```bash
+node setup.js
+```
+
+### 4. 启动服务
+
+```bash
+# 直接运行
+node server.js
+
+# 或使用 PM2（推荐）
+npm install -g pm2
+pm2 start server.js --name rphub
+pm2 save && pm2 startup
+```
+
+### 5. 配置 Caddy 反向代理
+
+`/etc/caddy/Caddyfile`:
+```
+yourdomain.com {
+    reverse_proxy localhost:3000
+}
+```
+
+```bash
+sudo systemctl reload caddy
+```
+
+访问 `https://yourdomain.com` 即可使用。
 
 ---
 
-## 目录结构 (Directory Structure)
+## 目录结构
 
 ```text
-Roleplay-Hub/
-├── index.html            # 主程序
-├── character/            # 辅助页面
-│   └── index.html
+RP-Hub/
+├── index.html                # 前端主页面
+├── character/index.html      # 角色卡生成器
 ├── assets/
-│   ├── css/
-│   │   └── styles.css    # 核心样式文件
+│   ├── css/styles.css        # 样式（含深色主题）
 │   └── js/
-│       ├── app.js        # 核心业务逻辑
-│       └── utils.js      # 工具函数库
-└── README.md             # 本说明文件
+│       ├── app.js            # 前端核心逻辑
+│       └── utils.js          # 工具函数
+├── server/                   # 后端
+│   ├── server.js             # Express 入口
+│   ├── db.js                 # SQLite 初始化
+│   ├── setup.js              # 用户创建 CLI
+│   ├── middleware.js          # 认证中间件
+│   ├── routes/
+│   │   ├── auth.js           # 登录/登出
+│   │   ├── data.js           # 数据 CRUD
+│   │   └── passkey.js        # Passkey/WebAuthn
+│   ├── package.json
+│   └── .env.example
+└── README.md
 ```
+
+---
+
+## 安全特性
+
+| 特性 | 说明 |
+|------|------|
+| 密码哈希 | Argon2id（抗 GPU/ASIC 攻击） |
+| Passkey | WebAuthn/FIDO2 无密码登录 |
+| 速率限制 | 登录接口 10 次/15 分钟/IP |
+| 账户锁定 | 5 次失败锁 15 分钟，10 次锁 1 小时，20 次锁 24 小时 |
+| Session | HTTP-only, Secure, SameSite=Strict, 7 天有效 |
+| 安全头 | Helmet (CSP, HSTS, X-Frame-Options 等) |
 
 ---
 
 ## 协议与许可 (License)
 
-本项目严格遵守以下开源协议：
+**[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hans)** — 署名-非商业性使用
 
-**[Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hans)**
-
-* **您可以**：自由地共享（在任何媒介以任何形式复制、发行本作品）与演绎（修改、转换或以本作品为基础进行创作）。
-* **您必须**：
-  * **署名 (Attribution)**：给出适当的署名，提供指向本许可协议的链接，同时标明是否对原始作品作了修改。
-  * **非商业性使用 (NonCommercial)**：**您不得将本作品或演绎作品用于任何商业目的。** 禁止任何形式的售卖、付费订阅集成或利用本项目进行广告牟利。
-* 若要获取本项目的商业授权，请直接联系项目原作者。
-
-详细许可条款请参见根目录下的 [`LICENSE`](./LICENSE) 文件。
+详细许可条款请参见 [`LICENSE`](./LICENSE) 文件。

@@ -478,54 +478,207 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                     }
                 });
 
-                // --- Persistence (IndexedDB) ---
-                const dbName = 'SillyTavernDB';
-                const dbVersion = 1;
-                let db = null;
+                // --- Persistence (Server API) ---
+                const API_BASE = '/api';
+                const isAuthenticated = ref(false);
+                const loginForm = reactive({ username: '', password: '' });
+                const loginLoading = ref(false);
+                const loginError = ref('');
 
-                const initDB = () => {
-                    return new Promise((resolve, reject) => {
-                        const request = indexedDB.open(dbName, dbVersion);
-                        request.onerror = (event) => reject('DB Error: ' + event.target.error);
-                        request.onsuccess = (event) => {
-                            db = event.target.result;
-                            resolve(db);
-                        };
-                        request.onupgradeneeded = (event) => {
-                            const db = event.target.result;
-                            if (!db.objectStoreNames.contains('store')) {
-                                db.createObjectStore('store');
+                const apiRequest = async (method, path, body = null) => {
+                    const opts = {
+                        method,
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin'
+                    };
+                    if (body !== null) opts.body = JSON.stringify(body);
+                    const res = await fetch(`${API_BASE}${path}`, opts);
+                    if (res.status === 401 && !path.includes('/auth/')) {
+                        isAuthenticated.value = false;
+                        throw new Error('SESSION_EXPIRED');
+                    }
+                    return res;
+                };
+
+                const login = async () => {
+                    loginLoading.value = true;
+                    loginError.value = '';
+                    try {
+                        const res = await apiRequest('POST', '/auth/login', {
+                            username: loginForm.username,
+                            password: loginForm.password
+                        });
+                        const data = await res.json();
+                        if (data.ok) {
+                            isAuthenticated.value = true;
+                            loginForm.password = '';
+                            await loadData();
+                            loadPasskeys();
+                        } else {
+                            loginError.value = data.error || '登录失败';
+                        }
+                    } catch (e) {
+                        loginError.value = '网络错误，请重试';
+                    } finally {
+                        loginLoading.value = false;
+                    }
+                };
+
+                const logout = async () => {
+                    try { await apiRequest('POST', '/auth/logout'); } catch (_) {}
+                    isAuthenticated.value = false;
+                };
+
+                const passkeyLogin = async () => {
+                    loginLoading.value = true;
+                    loginError.value = '';
+                    try {
+                        const optRes = await apiRequest('POST', '/passkey/login/options');
+                        if (!optRes.ok) {
+                            const d = await optRes.json();
+                            loginError.value = d.error || '无可用 Passkey';
+                            return;
+                        }
+                        const options = await optRes.json();
+
+                        const { startAuthentication } = await import('https://unpkg.com/@simplewebauthn/browser@11/dist/bundle/index.js');
+                        const credential = await startAuthentication({ optionsJSON: options });
+
+                        const verifyRes = await apiRequest('POST', '/passkey/login/verify', { credential });
+                        const data = await verifyRes.json();
+                        if (data.ok) {
+                            isAuthenticated.value = true;
+                            await loadData();
+                        } else {
+                            loginError.value = data.error || 'Passkey 验证失败';
+                        }
+                    } catch (e) {
+                        if (e.name === 'NotAllowedError') {
+                            loginError.value = '已取消';
+                        } else {
+                            loginError.value = e.message || 'Passkey 登录失败';
+                        }
+                    } finally {
+                        loginLoading.value = false;
+                    }
+                };
+
+                // Check initial auth status
+                const checkAuth = async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/auth/status`, { credentials: 'same-origin' });
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.authenticated) {
+                                isAuthenticated.value = true;
+                                return true;
                             }
-                        };
+                        }
+                    } catch (_) {}
+                    return false;
+                };
+
+                // Periodically check session (every 5 min)
+                setInterval(async () => {
+                    if (isAuthenticated.value) {
+                        try {
+                            const res = await fetch(`${API_BASE}/auth/status`, { credentials: 'same-origin' });
+                            if (res.status === 401) isAuthenticated.value = false;
+                        } catch (_) {}
+                    }
+                }, 5 * 60 * 1000);
+
+                // Check session on tab focus
+                document.addEventListener('visibilitychange', async () => {
+                    if (document.visibilityState === 'visible' && isAuthenticated.value) {
+                        try {
+                            const res = await fetch(`${API_BASE}/auth/status`, { credentials: 'same-origin' });
+                            if (res.status === 401) isAuthenticated.value = false;
+                        } catch (_) {}
+                    }
+                });
+
+                // Passkey management
+                const registeredPasskeys = ref([]);
+
+                const loadPasskeys = async () => {
+                    try {
+                        const res = await apiRequest('GET', '/passkey/list');
+                        if (res.ok) {
+                            const data = await res.json();
+                            registeredPasskeys.value = data.passkeys || [];
+                        }
+                    } catch (_) {}
+                };
+
+                const registerPasskey = async () => {
+                    try {
+                        const optRes = await apiRequest('POST', '/passkey/register/options');
+                        if (!optRes.ok) {
+                            showToast('获取注册选项失败', 'error');
+                            return;
+                        }
+                        const options = await optRes.json();
+
+                        const { startRegistration } = await import('https://unpkg.com/@simplewebauthn/browser@11/dist/bundle/index.js');
+                        const credential = await startRegistration({ optionsJSON: options });
+
+                        const name = prompt('给这个 Passkey 起个名字:', `Passkey ${new Date().toLocaleDateString()}`);
+                        const verifyRes = await apiRequest('POST', '/passkey/register/verify', { credential, name: name || undefined });
+                        const data = await verifyRes.json();
+                        if (data.ok) {
+                            showToast('Passkey 注册成功', 'success');
+                            await loadPasskeys();
+                        } else {
+                            showToast(data.error || '注册失败', 'error');
+                        }
+                    } catch (e) {
+                        if (e.name !== 'NotAllowedError') {
+                            showToast('Passkey 注册失败', 'error');
+                        }
+                    }
+                };
+
+                const deletePasskey = async (id) => {
+                    if (!confirm('确定删除此 Passkey？')) return;
+                    try {
+                        const res = await apiRequest('DELETE', `/passkey/${encodeURIComponent(id)}`);
+                        const data = await res.json();
+                        if (data.ok) {
+                            showToast('Passkey 已删除', 'success');
+                            await loadPasskeys();
+                        }
+                    } catch (_) {
+                        showToast('删除失败', 'error');
+                    }
+                };
+
+                const initDB = async () => { /* no-op: server handles storage */ };
+
+                const dbSet = async (key, value) => {
+                    await apiRequest('PUT', `/data/${encodeURIComponent(key)}`, {
+                        value: JSON.parse(JSON.stringify(value))
                     });
                 };
 
-                const dbSet = (key, value) => {
-                    return new Promise((resolve, reject) => {
-                        if (!db) return reject('DB not initialized');
-                        const transaction = db.transaction(['store'], 'readwrite');
-                        const store = transaction.objectStore('store');
-                        // Clone to plain object to avoid Proxy issues
-                        const request = store.put(JSON.parse(JSON.stringify(value)), key);
-                        request.onsuccess = () => resolve();
-                        request.onerror = (event) => reject(event.target.error);
-                    });
+                const dbGet = async (key) => {
+                    try {
+                        const res = await apiRequest('GET', `/data/${encodeURIComponent(key)}`);
+                        if (res.status === 404) return undefined;
+                        const data = await res.json();
+                        return data.value;
+                    } catch (e) {
+                        if (e.message === 'SESSION_EXPIRED') throw e;
+                        return undefined;
+                    }
                 };
 
-                const dbGet = (key) => {
-                    return new Promise((resolve, reject) => {
-                        if (!db) return reject('DB not initialized');
-                        const transaction = db.transaction(['store'], 'readonly');
-                        const store = transaction.objectStore('store');
-                        const request = store.get(key);
-                        request.onsuccess = () => resolve(request.result);
-                        request.onerror = (event) => reject(event.target.error);
-                    });
+                const dbDelete = async (key) => {
+                    await apiRequest('DELETE', `/data/${encodeURIComponent(key)}`);
                 };
 
                 const saveData = async () => {
                     try {
-                        if (!db) await initDB();
                         await dbSet('silly_tavern_characters', characters.value);
                         await dbSet('silly_tavern_settings', settings);
                         await dbSet('silly_tavern_presets', presets.value);
@@ -548,120 +701,47 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                     }
                 };
 
-                const dbDelete = (key) => {
-                    return new Promise((resolve, reject) => {
-                        if (!db) return reject('DB not initialized');
-                        const transaction = db.transaction(['store'], 'readwrite');
-                        const store = transaction.objectStore('store');
-                        const request = store.delete(key);
-                        request.onsuccess = () => resolve();
-                        request.onerror = (event) => reject(event.target.error);
-                    });
-                };
+
 
                 /* extracted generateUUID */
 
                 const loadData = async () => {
                     try {
-                        await initDB();
-                        
-                        // Migration: Check LocalStorage first
-                        const localChar = localStorage.getItem('silly_tavern_characters');
-                        if (localChar) {
-                            console.log('Migrating from LocalStorage to IndexedDB...');
-                            try {
-                                characters.value = JSON.parse(localChar);
-                                const localSettings = localStorage.getItem('silly_tavern_settings');
-                                if (localSettings) Object.assign(settings, JSON.parse(localSettings));
-                                
-                                const localPresets = localStorage.getItem('silly_tavern_presets');
-                                if (localPresets) presets.value = JSON.parse(localPresets);
-                                
-                                const localRegex = localStorage.getItem('silly_tavern_regex');
-                                if (localRegex) regexScripts.value = JSON.parse(localRegex);
-                                
-                                const localWI = localStorage.getItem('silly_tavern_worldinfo');
-                                if (localWI) worldInfo.value = JSON.parse(localWI);
-                                
-                                const localUser = localStorage.getItem('silly_tavern_user');
-                                if (localUser) Object.assign(user, JSON.parse(localUser));
+                        // Bulk load all data from server API
+                        const res = await apiRequest('POST', '/data/bulk', {
+                            keys: [
+                                'silly_tavern_characters',
+                                'silly_tavern_settings',
+                                'silly_tavern_presets',
+                                'silly_tavern_regex',
+                                'silly_tavern_worldinfo',
+                                'silly_tavern_worldinfo_settings',
+                                'silly_tavern_user',
+                                'silly_tavern_last_active_char'
+                            ]
+                        });
+                        const { data } = await res.json();
 
-                                // Save to DB and Clear LocalStorage
-                                await saveData();
-                                localStorage.removeItem('silly_tavern_characters');
-                                localStorage.removeItem('silly_tavern_settings');
-                                localStorage.removeItem('silly_tavern_presets');
-                                localStorage.removeItem('silly_tavern_regex');
-                                localStorage.removeItem('silly_tavern_worldinfo');
-                                localStorage.removeItem('silly_tavern_user');
-                                showToast('数据已迁移到 IndexedDB', 'success');
-                                return;
-                            } catch (e) {
-                                console.error('Migration failed:', e);
-                            }
+                        if (data.silly_tavern_characters) {
+                            characters.value = data.silly_tavern_characters.filter(c => c);
                         }
 
-                        // Load from DB
-                        const savedChars = await dbGet('silly_tavern_characters');
-                        if (savedChars) {
-                            // Migration: Ensure all characters have a UUID and createdAt
-                            let migrated = false;
-                            characters.value = savedChars.filter(char => char).map((char, index) => {
-                                if (!char.uuid) {
-                                    char.uuid = generateUUID();
-                                    migrated = true;
-                                    // Try to migrate old index-based chat history to UUID-based
-                                    dbGet(`silly_tavern_chat_${index}`).then(oldChat => {
-                                        if (oldChat) {
-                                            dbSet(`silly_tavern_chat_${char.uuid}`, oldChat);
-                                            dbDelete(`silly_tavern_chat_${index}`); // Clean up old key
-                                        }
-                                    }).catch(() => {});
-                                }
-                                if (!char.createdAt) {
-                                    // Use a slightly offset timestamp based on index to preserve some order for old cards
-                                    char.createdAt = Date.now() - (savedChars.length - index) * 1000;
-                                    migrated = true;
-                                }
-                                return char;
-                            });
-                            if (migrated) {
-                                await dbSet('silly_tavern_characters', characters.value);
-                                console.log('Migrated characters to UUID and timestamp system');
-                            }
-                        }
-
-                        const savedSettings = await dbGet('silly_tavern_settings');
-                        if (savedSettings) {
-                            Object.assign(settings, savedSettings);
-                            // Ensure theme field exists for old data
+                        if (data.silly_tavern_settings) {
+                            Object.assign(settings, data.silly_tavern_settings);
                             if (!settings.theme) settings.theme = 'auto';
                             applyTheme(settings.theme);
                         }
 
-                        const savedPresets = await dbGet('silly_tavern_presets');
-                        if (savedPresets) presets.value = savedPresets;
-                        
-                        const savedRegex = await dbGet('silly_tavern_regex');
-                        if (savedRegex) regexScripts.value = savedRegex;
+                        if (data.silly_tavern_presets) presets.value = data.silly_tavern_presets;
+                        if (data.silly_tavern_regex) regexScripts.value = data.silly_tavern_regex;
+                        if (data.silly_tavern_worldinfo) worldInfo.value = data.silly_tavern_worldinfo;
+                        if (data.silly_tavern_worldinfo_settings) Object.assign(worldInfoSettings, data.silly_tavern_worldinfo_settings);
 
-                        const savedWI = await dbGet('silly_tavern_worldinfo');
-                        if (savedWI) worldInfo.value = savedWI;
+                        if (data.silly_tavern_user) Object.assign(user, data.silly_tavern_user);
+                        if (!user.uuid) user.uuid = generateUUID();
 
-                        const savedWISettings = await dbGet('silly_tavern_worldinfo_settings');
-                        if (savedWISettings) Object.assign(worldInfoSettings, savedWISettings);
-
-                        // const savedRecentTimes = await dbGet('silly_tavern_recent_times'); // Deprecated
-                        // if (savedRecentTimes) recentGenerationTimes.value = savedRecentTimes;
-
-                        const savedUser = await dbGet('silly_tavern_user');
-                        if (savedUser) Object.assign(user, savedUser);
-                        if (!user.uuid) user.uuid = generateUUID(); // Ensure UUID
-                        
-                        // Load Last Active Character Index
-                        const lastCharIndex = await dbGet('silly_tavern_last_active_char');
-                        if (lastCharIndex !== undefined) {
-                            lastActiveCharacterId.value = lastCharIndex;
+                        if (data.silly_tavern_last_active_char !== undefined) {
+                            lastActiveCharacterId.value = data.silly_tavern_last_active_char;
                         }
 
                     } catch (e) {
@@ -3965,8 +4045,13 @@ ${rawHtml}
 
                 // Lifecycle
                 onMounted(async () => {
+                    // Check auth status first
+                    const authed = await checkAuth();
+                    if (!authed) return; // Show login page
+
                     fetchQuota(); // Fetch quota on load
                     checkUpdate(); // Check for updates
+                    loadPasskeys(); // Load registered passkeys
 
                     await loadData();
 
@@ -4389,6 +4474,9 @@ ${rawHtml}
                 });
 
                 return {
+                    // Auth
+                    isAuthenticated, loginForm, loginLoading, loginError, login, logout, passkeyLogin, checkAuth, apiRequest,
+                    registeredPasskeys, registerPasskey, deletePasskey, loadPasskeys,
                     currentView, showMobileMenu, showDescriptionPanel, showModelSelector, modelSelectionTarget, showChatModelSelector, showCharacterEditor, showAddCharacterMenu, showPresetEditor,
                     showExportModal, exportType, exportItems, selectedExportIndices, // Export Modal
                     showCharacterExportModal, characterToExportIndex, openCharacterExportModal, confirmCharacterExport, // Character Export Modal

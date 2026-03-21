@@ -1,0 +1,22 @@
+{
+  "name": "rphub-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "setup": "node setup.js"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "^11.0.0",
+    "argon2": "^0.41.0",
+    "better-sqlite3": "^11.0.0",
+    "compression": "^1.7.4",
+    "connect-sqlite3": "^0.9.15",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "express-session": "^1.18.0",
+    "helmet": "^8.0.0"
+  }
+}
