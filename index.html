@@ -6,6 +6,37 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>Roleplay Hub</title>
+    <!-- Debug: catch ALL errors including script load failures -->
+    <script>
+    (function(){
+        var errors = [];
+        window.addEventListener('error', function(e) {
+            errors.push(e.message + ' @ ' + (e.filename||'?') + ':' + (e.lineno||'?'));
+            showErrors();
+        }, true);
+        window.addEventListener('unhandledrejection', function(e) {
+            errors.push('Promise: ' + (e.reason||'unknown'));
+            showErrors();
+        });
+        function showErrors() {
+            var d = document.getElementById('_dbg');
+            if (!d) { d = document.createElement('div'); d.id='_dbg'; d.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#dc2626;color:white;padding:12px;font-size:13px;z-index:99999;max-height:40vh;overflow:auto;word-break:break-all'; document.body ? document.body.appendChild(d) : document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(d)}); }
+            d.textContent = errors.join(' | ');
+        }
+        window.addEventListener('DOMContentLoaded', function() {
+            var info = [];
+            if (typeof Vue === 'undefined') info.push('Vue NOT loaded');
+            if (typeof marked === 'undefined') info.push('marked NOT loaded');
+            if (typeof DOMPurify === 'undefined') info.push('DOMPurify NOT loaded');
+            if (typeof Sortable === 'undefined') info.push('Sortable NOT loaded');
+            if (info.length) { errors.push(info.join(', ')); showErrors(); }
+            setTimeout(function() {
+                var app = document.getElementById('app');
+                if (app && app.hasAttribute('v-cloak')) { errors.push('Vue failed to mount after 5s'); showErrors(); }
+            }, 5000);
+        });
+    })();
+    </script>
     <!-- <link rel="icon" href="logo.jpg" type="image/jpeg"> -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
@@ -2411,14 +2442,5 @@
 
     <script src="assets/js/utils.js"></script>
     <script src="assets/js/app.js"></script>
-    <script>
-    // Debug: catch Vue init errors and show on page (remove after debugging)
-    window.addEventListener('error', function(e) {
-        var d = document.createElement('div');
-        d.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:red;color:white;padding:12px;font-size:14px;z-index:99999;word-break:break-all';
-        d.textContent = 'JS Error: ' + e.message + ' @ ' + (e.filename||'') + ':' + (e.lineno||'');
-        document.body.appendChild(d);
-    });
-    </script>
 </body>
 </html>
