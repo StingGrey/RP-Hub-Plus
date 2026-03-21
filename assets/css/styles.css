@@ -6,7 +6,8 @@ html {
             text-size-adjust: 100% !important;
         }
 
-        [v-cloak] { display: none !important; }
+        [v-cloak] > * { display: none !important; }
+        [v-cloak]::before { content: "加载中..."; display: flex; justify-content: center; align-items: center; min-height: 100dvh; color: #9ca3af; font-size: 1rem; }
 
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
