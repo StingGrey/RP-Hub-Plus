@@ -1711,9 +1711,9 @@ ${rawHtml}
                     }
                     
                     // Preserve ASCII art / box-drawing blocks (Status_Bar etc.)
-                    // Detect lines with box-drawing chars and wrap in <pre> to keep formatting
-                    processed = processed.replace(/((?:^|\n)(?:.*[┌┐└┘├┤┬┴┼─│║╔╗╚╝╠╣╦╩╬═╒╓╕╖╘╙╛╜╞╟╡╢╤╧╥╨].*)(?:\n(?:.*[┌┐└┘├┤┬┴┼─│║╔╗╚╝╠╣╦╩╬═╒╓╕╖╘╙╛╜╞╟╡╢╤╧╥╨║│┊┈].*))*)/g, (match) => {
-                        return '\n<pre style="font-family:monospace;white-space:pre;overflow-x:auto;line-height:1.4;margin:0.5em 0">' + match.trim() + '</pre>\n';
+                    // Match from a line with ┌/╔ to a line with └/╚, wrap entire block in <pre>
+                    processed = processed.replace(/([^\n]*[┌╔][─━═]+[┐╗]?[^\n]*[\s\S]*?[^\n]*[└╚][─━═]+[┘╝]?[^\n]*)/g, (match) => {
+                        return '<pre style="font-family:monospace;white-space:pre;overflow-x:auto;line-height:1.5;margin:0.5em 0;font-size:0.85em;background:transparent;border:none;padding:0">' + match.trim() + '</pre>';
                     });
 
                     let html = DOMPurify.sanitize(marked.parse(processed), cleanConfig);
