@@ -8,6 +8,8 @@
 
 **基于 [STA1N156/RP-Hub](https://github.com/STA1N156/RP-Hub) 修改。**
 
+### 该Folk项目仅针对个人打造，不具有普适性！谨慎使用
+
 ### 相比原项目的修改内容
 
 - 新增深色主题（Pure Black / OLED 纯黑风格）
