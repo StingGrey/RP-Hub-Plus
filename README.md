@@ -4,7 +4,7 @@
 [![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg?logo=vue.js)](https://vuejs.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
-> **一款纯前端运行的本地角色扮演（Roleplay）对话和角色卡生成工具。**
+> **一款本地角色扮演（Roleplay）对话和角色卡生成工具。**
 
 **基于 [STA1N156/RP-Hub](https://github.com/STA1N156/RP-Hub) 修改。**
 
