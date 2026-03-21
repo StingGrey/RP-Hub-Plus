@@ -2534,6 +2534,9 @@ ${rawHtml}
                             // This ensures previous thoughts don't pollute the context
                             let cleanContent = parseCot(m.content).main;
 
+                            // Strip image generation tags to save tokens
+                            cleanContent = cleanContent.replace(/image###[^#]*###/g, '[图片]');
+
                             return {
                                 role: m.role === 'user' ? 'user' : 'assistant',
                                 name: m.name || (m.role === 'user' ? user.name : currentCharacter.value.name),
