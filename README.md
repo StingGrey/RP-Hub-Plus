@@ -9,7 +9,7 @@
 
 **基于 [STA1N156/RP-Hub](https://github.com/STA1N156/RP-Hub) 修改。**
 
-## 该Fork项目仅针对个人打造，不具有普适性！谨慎使用
+## 该Fork项目仅针对个人需求打造，不具有普适性！谨慎使用
 
 ### 相比原项目的修改内容
 
@@ -97,8 +97,6 @@ yourdomain.com {
 ```bash
 sudo systemctl reload caddy
 ```
-
-访问 `https://yourdomain.com` 即可使用。
 
 ---
 
