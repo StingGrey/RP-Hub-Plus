@@ -5,6 +5,10 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
 
         // Plugin: Preserve box-drawing / ASCII art blocks
         md.core.ruler.before('normalize', 'box_drawing', (state) => {
+            // Hide custom XML-like tags (e.g. <Status_Bar>, </option>, <thinking>)
+            state.src = state.src.replace(/<\/?[A-Z][A-Za-z_]*>/g, '');
+            state.src = state.src.replace(/<\/?[a-z]+_[a-z_]+>/g, '');
+            // Preserve box-drawing blocks
             state.src = state.src.replace(/([^\n]*[┌╔][─━═]+[┐╗]?[^\n]*[\s\S]*?[^\n]*[└╚][─━═]+[┘╝]?[^\n]*)/g, (m) => {
                 return '\n<pre style="font-family:monospace;white-space:pre;overflow-x:auto;line-height:1.5;font-size:0.85em;background:transparent;border:none;padding:0">' + m.trim() + '</pre>\n';
             });
