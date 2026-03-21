@@ -880,7 +880,7 @@
                     <span class="leading-none">回</span>
                 </button>
 
-                <div class="flex-1 w-full relative bg-white h-full">
+                <div class="flex-1 w-full relative bg-white" style="-webkit-overflow-scrolling:touch;overflow:auto">
                     <!-- Loading Overlay -->
                     <div v-if="isGeneratorLoading" class="absolute inset-0 z-10 flex items-center justify-center bg-gray-50">
                         <div class="flex flex-col items-center">
@@ -894,7 +894,7 @@
                     <iframe
                         :src="generatorUrl"
                         @load="onGeneratorLoad"
-                        class="absolute inset-0 w-full h-full border-0"
+                        class="w-full h-full border-0"
                         allow="clipboard-write"
                         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
                     ></iframe>
