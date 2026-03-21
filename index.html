@@ -72,9 +72,8 @@
             }
         }
     </script>
-    <script>
-        document.write('<link rel="stylesheet" href="assets/css/styles.css?v=' + new Date().getTime() + '">');
-    </script>
+    <style>[v-cloak]{display:none!important}</style>
+    <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans selection:bg-primary-200 selection:text-primary-900">
     <div id="app" v-cloak class="min-h-[100dvh] flex flex-col md:flex-row relative">
@@ -2408,9 +2407,7 @@
     </template><!-- end isAuthenticated -->
     </div>
 
-    <script>
-        document.write('<script src="assets/js/utils.js?v=' + new Date().getTime() + '"><\/script>');
-        document.write('<script src="assets/js/app.js?v=' + new Date().getTime() + '"><\/script>');
-    </script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/app.js"></script>
 </body>
 </html>
