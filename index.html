@@ -11,17 +11,21 @@
     (function(){
         var errors = [];
         window.addEventListener('error', function(e) {
-            errors.push(e.message + ' @ ' + (e.filename||'?') + ':' + (e.lineno||'?'));
+            if (e.target && e.target.tagName) {
+                errors.push('LOAD FAIL: <' + e.target.tagName + '> src=' + (e.target.src || e.target.href || '?'));
+            } else {
+                errors.push((e.message||'?') + ' @ ' + (e.filename||'?') + ':' + (e.lineno||'?') + ':' + (e.colno||'?'));
+            }
             showErrors();
         }, true);
         window.addEventListener('unhandledrejection', function(e) {
-            errors.push('Promise: ' + (e.reason||'unknown'));
+            errors.push('Promise: ' + String(e.reason && e.reason.stack || e.reason || 'unknown'));
             showErrors();
         });
         function showErrors() {
             var d = document.getElementById('_dbg');
-            if (!d) { d = document.createElement('div'); d.id='_dbg'; d.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#dc2626;color:white;padding:12px;font-size:13px;z-index:99999;max-height:40vh;overflow:auto;word-break:break-all'; document.body ? document.body.appendChild(d) : document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(d)}); }
-            d.textContent = errors.join(' | ');
+            if (!d) { d = document.createElement('div'); d.id='_dbg'; d.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#dc2626;color:white;padding:12px;font-size:12px;z-index:99999;max-height:50vh;overflow:auto;word-break:break-all;font-family:monospace'; document.body ? document.body.appendChild(d) : document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(d)}); }
+            d.innerHTML = errors.map(function(e,i){return (i+1)+'. '+e}).join('<br>');
         }
         window.addEventListener('DOMContentLoaded', function() {
             var info = [];
@@ -29,7 +33,7 @@
             if (typeof marked === 'undefined') info.push('marked NOT loaded');
             if (typeof DOMPurify === 'undefined') info.push('DOMPurify NOT loaded');
             if (typeof Sortable === 'undefined') info.push('Sortable NOT loaded');
-            if (info.length) { errors.push(info.join(', ')); showErrors(); }
+            if (info.length) { errors.push('MISSING: ' + info.join(', ')); showErrors(); }
             setTimeout(function() {
                 var app = document.getElementById('app');
                 if (app && app.hasAttribute('v-cloak')) { errors.push('Vue failed to mount after 5s'); showErrors(); }
