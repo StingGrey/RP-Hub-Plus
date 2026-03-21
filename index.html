@@ -1308,10 +1308,10 @@
                                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:bg-white hover:border-gray-200 hover:shadow-sm transition-all duration-200">
                                         <div class="flex justify-between items-center mb-3">
                                             <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">思考等级</label>
-                                            <span class="text-xs font-mono text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded border border-violet-100">{{ {off:'关闭',low:'低',medium:'中',high:'高',xhigh:'极高'}[settings.reasoningEffort] || settings.reasoningEffort }}</span>
+                                            <span class="text-xs font-mono text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded border border-violet-100">{{ {off:'关闭',auto:'自适应',low:'低',medium:'中',high:'高',xhigh:'极高'}[settings.reasoningEffort] || settings.reasoningEffort }}</span>
                                         </div>
                                         <div class="flex gap-1 flex-wrap">
-                                            <button v-for="opt in [{v:'off',l:'关闭'},{v:'low',l:'低'},{v:'medium',l:'中'},{v:'high',l:'高'},{v:'xhigh',l:'极高'}]" :key="opt.v"
+                                            <button v-for="opt in [{v:'off',l:'关闭'},{v:'auto',l:'自适应'},{v:'low',l:'低'},{v:'medium',l:'中'},{v:'high',l:'高'},{v:'xhigh',l:'极高'}]" :key="opt.v"
                                                 @click="settings.reasoningEffort = opt.v"
                                                 class="flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all min-w-[3rem]"
                                                 :class="settings.reasoningEffort === opt.v ? 'bg-violet-600 text-white border-violet-600 shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:border-violet-300 hover:text-violet-600'">

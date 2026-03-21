@@ -2044,8 +2044,12 @@ ${rawHtml}
                     if (!effort || effort === 'off') return {};
                     const m = model.toLowerCase();
 
-                    // Claude models — use thinking with adaptive mode
+                    // Claude models — use adaptive thinking
                     if (m.includes('claude')) {
+                        if (effort === 'auto') {
+                            // Pure adaptive: Claude decides if and how much to think
+                            return { thinking: { type: 'adaptive' } };
+                        }
                         const effortMap = { low: 'low', medium: 'medium', high: 'high', xhigh: 'max' };
                         return {
                             thinking: { type: 'adaptive' },
@@ -2053,13 +2057,15 @@ ${rawHtml}
                         };
                     }
 
+                    // For non-Claude models, "auto" means don't send any param (let model decide)
+                    if (effort === 'auto') return {};
+
                     // OpenAI o-series / GPT-5+ — reasoning_effort (supports xhigh on some models)
                     if (m.includes('o1') || m.includes('o3') || m.includes('o4') || m.includes('gpt-5')) {
                         return { reasoning_effort: effort === 'xhigh' ? 'xhigh' : effort };
                     }
 
                     // Default: reasoning_effort (works with Gemini, OpenRouter, and most OpenAI-compatible APIs)
-                    // xhigh not widely supported, cap to high for safety
                     return { reasoning_effort: effort === 'xhigh' ? 'high' : effort };
                 };
 
