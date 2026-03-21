@@ -348,6 +348,11 @@
                         <div v-else class="text-gray-400 italic">未选择角色卡</div>
                     </div>
                     <div class="flex items-center space-x-2">
+                        <!-- Context Token Count -->
+                        <div v-if="currentCharacter" class="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded-full flex items-center mr-1" :title="'预估上下文长度: ' + totalContextLength + ' 字符'">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            ~{{ Math.round(totalContextLength / 3) }}tk
+                        </div>
                         <!-- World Info Status -->
                         <div v-if="activeWorldInfoCount > 0" class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full flex items-center mr-1" title="世界书已启用">
                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
@@ -1293,9 +1298,27 @@
                                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:bg-white hover:border-gray-200 hover:shadow-sm transition-all duration-200">
                                         <div class="flex justify-between items-center mb-3">
                                             <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">保留最近消息数</label>
-                                            <span class="text-xs font-mono text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">{{ settings.keepRecentMessages }}</span>
+                                            <span class="text-xs font-mono text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">{{ settings.keepRecentMessages === 0 ? '∞ 无限' : settings.keepRecentMessages }}</span>
                                         </div>
-                                        <input v-model.number="settings.keepRecentMessages" type="range" min="4" max="30" step="2" title="保留最近消息数" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-teal-500 hover:accent-teal-400 transition-all">
+                                        <input v-model.number="settings.keepRecentMessages" type="range" min="0" max="50" step="2" title="0=无限制" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-teal-500 hover:accent-teal-400 transition-all">
+                                        <div class="flex justify-between text-[10px] text-gray-400 mt-1"><span>∞</span><span>50</span></div>
+                                    </div>
+
+                                    <!-- Reasoning Effort -->
+                                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:bg-white hover:border-gray-200 hover:shadow-sm transition-all duration-200">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">思考等级</label>
+                                            <span class="text-xs font-mono text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded border border-violet-100">{{ {off:'关闭',low:'低',medium:'中',high:'高'}[settings.reasoningEffort] || settings.reasoningEffort }}</span>
+                                        </div>
+                                        <div class="flex gap-1.5">
+                                            <button v-for="opt in [{v:'off',l:'关闭'},{v:'low',l:'低'},{v:'medium',l:'中'},{v:'high',l:'高'}]" :key="opt.v"
+                                                @click="settings.reasoningEffort = opt.v"
+                                                class="flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all"
+                                                :class="settings.reasoningEffort === opt.v ? 'bg-violet-600 text-white border-violet-600 shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:border-violet-300 hover:text-violet-600'">
+                                                {{ opt.l }}
+                                            </button>
+                                        </div>
+                                        <p class="text-[10px] text-gray-400 mt-2">兼容 OpenAI o系列 / Gemini / OpenRouter 等</p>
                                     </div>
                                 </div>
                             </div>

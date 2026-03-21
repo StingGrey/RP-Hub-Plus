@@ -249,6 +249,7 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                     contextCompression: false,
                     compressionThreshold: 80,
                     keepRecentMessages: 10,
+                    reasoningEffort: 'off',
                     theme: 'auto'
                 });
 
@@ -882,7 +883,7 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                         return;
                     }
 
-                    const keepCount = settings.keepRecentMessages || 10;
+                    const keepCount = settings.keepRecentMessages === 0 ? Infinity : (settings.keepRecentMessages || 10);
                     const history = chatHistory.value;
 
                     if (history.length <= keepCount) {
@@ -1156,7 +1157,7 @@ ${oldText}
 
                     // 3. Chat History (有摘要时只计算摘要+最近N条)
                     const summaryLength = contextSummary.value ? contextSummary.value.length : 0;
-                    const keepCount = settings.keepRecentMessages || 10;
+                    const keepCount = settings.keepRecentMessages === 0 ? Infinity : (settings.keepRecentMessages || 10);
                     const historyContent = contextSummary.value
                         ? chatHistory.value.slice(-keepCount).map(m => m.content).join('\n')
                         : chatHistory.value.map(m => m.content).join('\n');
@@ -2418,7 +2419,7 @@ ${rawHtml}
                         const estimatedTokens = Math.ceil(systemPrompt.length / 3) +
                             Math.ceil(chatHistory.value.map(m => m.content).join('').length / 3);
                         const threshold = settings.contextSize * (settings.compressionThreshold / 100);
-                        const keepCount = settings.keepRecentMessages || 10;
+                        const keepCount = settings.keepRecentMessages === 0 ? Infinity : (settings.keepRecentMessages || 10);
 
                         if (estimatedTokens > threshold && chatHistory.value.length > keepCount) {
                             await compressContext({ silent: true });
@@ -2452,7 +2453,7 @@ ${rawHtml}
                     }
 
                     // 添加聊天记录（有摘要时只发最近N条）
-                    const keepCount = settings.keepRecentMessages || 10;
+                    const keepCount = settings.keepRecentMessages === 0 ? Infinity : (settings.keepRecentMessages || 10);
                     const historyToSend = contextSummary.value
                         ? chatHistory.value.slice(-keepCount)
                         : chatHistory.value;
@@ -2551,7 +2552,8 @@ ${rawHtml}
                                         model: settings.model,
                                         messages: messages,
                                         temperature: settings.temperature,
-                                        stream: settings.stream
+                                        stream: settings.stream,
+                                        ...(settings.reasoningEffort && settings.reasoningEffort !== 'off' ? { reasoning_effort: settings.reasoningEffort } : {})
                                     }),
                                     signal: abortController.value.signal
                                 });
