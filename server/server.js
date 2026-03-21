@@ -77,10 +77,15 @@ app.use('/api/auth', authRoutes);
 app.use('/api/data', dataRoutes);
 app.use('/api/passkey', passkeyRoutes);
 
-// Serve static frontend files
+// Serve static frontend files (no-cache for development agility)
 app.use(express.static(path.join(__dirname, '..'), {
     index: false,
-    extensions: ['html']
+    extensions: ['html'],
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+    }
 }));
 
 // SPA: serve index.html for all non-API routes
