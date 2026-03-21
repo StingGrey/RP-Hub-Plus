@@ -77,10 +77,10 @@
     </script>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans selection:bg-primary-200 selection:text-primary-900">
-    <div id="app" v-cloak class="h-full flex flex-col md:flex-row relative">
+    <div id="app" v-cloak class="min-h-[100dvh] flex flex-col md:flex-row relative">
 
         <!-- ========== LOGIN PAGE ========== -->
-        <div v-if="!isAuthenticated" class="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-black">
+        <div v-if="!isAuthenticated" class="min-h-[100dvh] w-full flex items-center justify-center bg-gray-50 dark:bg-black">
             <div class="bg-white dark:bg-zinc-900 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-zinc-800 w-full max-w-sm mx-4 animate-fade-in">
                 <h1 class="text-2xl font-bold text-center mb-1 bg-gradient-to-r from-primary-500 to-purple-500 bg-clip-text text-transparent">RolePlay Hub</h1>
                 <p class="text-center text-gray-400 text-sm mb-8">Login to continue</p>
