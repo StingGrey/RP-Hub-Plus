@@ -1,4 +1,4 @@
-# Roleplay Hub
+# Roleplay Hub Plus
 
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Vue](https://img.shields.io/badge/Vue-3-4FC08D.svg?logo=vue.js)](https://vuejs.org/)
@@ -14,6 +14,7 @@
 - 新增外观设置面板，支持 浅色 / 深色 / 跟随系统 三种模式切换
 - 主题偏好持久化存储，跟随系统模式实时响应系统主题变化
 - 切换时带平滑过渡动画
+- 上下文压缩
 
 **【免责与授权声明】**
 本项目基于 **[CC BY-NC 4.0（知识共享-署名-非商业性使用 4.0 国际许可协议）](./LICENSE)** 开源。原始项目由 [STA1N156](https://github.com/STA1N156) 创建。**明确禁止任何形式的商业化使用（包括但不限于：作为收费服务提供、打包在付费产品中售卖、在产品内植入广告盈利等）。** 任何使用者必须遵守该协议，尊重原作者的署名权。对于违反协议的商业行为，保留追究法律责任的权利。
