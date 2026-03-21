@@ -1588,9 +1588,10 @@
                             <div>
                                 <div class="flex justify-between items-center mb-1">
                                     <label class="font-medium text-gray-600">Token预算上限</label>
-                                    <span class="text-primary-600 font-mono bg-primary-50 px-2 py-0.5 rounded">{{ worldInfoSettings.tokenBudget }}</span>
+                                    <span class="text-primary-600 font-mono bg-primary-50 px-2 py-0.5 rounded">{{ worldInfoSettings.tokenBudget === 0 ? '∞ 无限' : worldInfoSettings.tokenBudget }}</span>
                                 </div>
-                                <input type="range" v-model.number="worldInfoSettings.tokenBudget" min="0" max="4096" step="64" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600">
+                                <input type="range" v-model.number="worldInfoSettings.tokenBudget" min="0" max="32768" step="256" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600">
+                                <div class="flex justify-between text-[10px] text-gray-400 mt-1"><span>∞</span><span>32K</span></div>
                             </div>
                             <!-- Min Activations -->
                             <div>
