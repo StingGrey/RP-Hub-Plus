@@ -270,6 +270,8 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                     compressionThreshold: 80,
                     keepRecentMessages: 10,
                     reasoningEffort: 'off',
+                    plotSummaryInterval: 0,
+                    plotSummaryModel: '',
                     theme: 'auto'
                 });
 
@@ -2081,6 +2083,52 @@ ${rawHtml}
                 };
 
                 // Refactored generation logic
+                // Auto plot summary - runs in background after every N messages
+                const autoPlotSummary = async () => {
+                    if (!currentCharacter.value) return;
+                    const model = settings.plotSummaryModel || settings.suggestionModel || settings.model;
+                    const recentMsgs = chatHistory.value.slice(-20).map(m => ({
+                        role: m.role === 'user' ? 'user' : 'assistant',
+                        content: parseCot(m.content).main.substring(0, 500)
+                    }));
+
+                    const existingMemory = currentCharacter.value.plot_memory || '';
+                    const prompt = `你是一个剧情记录助手。请根据以下最近的角色扮演对话，提取并总结重要的剧情信息。
+
+${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}【最近对话】已省略，见消息历史。
+
+请输出一段简洁的剧情摘要，包含：关键事件、人物关系变化、重要物品/地点、角色状态。
+只输出新增或更新的内容，不要重复已有记忆。如果没有新的重要信息，输出"无新增"。
+直接输出摘要文字，不需要标签或格式。`;
+
+                    try {
+                        const url = settings.apiUrl.endsWith('/v1') ? `${settings.apiUrl}/chat/completions` : `${settings.apiUrl}/v1/chat/completions`;
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
+                            body: JSON.stringify({
+                                model: model,
+                                messages: [...recentMsgs, { role: 'user', content: prompt }],
+                                temperature: 0.3
+                            })
+                        });
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        const summary = (data.choices[0].message.content || '').trim();
+                        if (summary && !summary.includes('无新增')) {
+                            if (currentCharacter.value.plot_memory) {
+                                currentCharacter.value.plot_memory += '\n---\n' + summary;
+                            } else {
+                                currentCharacter.value.plot_memory = summary;
+                            }
+                            saveData();
+                            showToast('剧情记忆已自动更新', 'info');
+                        }
+                    } catch (e) {
+                        console.warn('Auto plot summary failed:', e);
+                    }
+                };
+
                 // Build reasoning/thinking parameters based on model name
                 const buildReasoningParams = (model, effort) => {
                     if (!effort || effort === 'off') return {};
@@ -2959,6 +3007,14 @@ ${rawHtml}
                                         showToast('已更新剧情记忆', 'info');
                                     }
                                     // -----------------------------
+                                }
+
+                                // --- Auto Plot Summary ---
+                                if (settings.plotSummaryInterval > 0 && currentCharacter.value) {
+                                    const msgCount = chatHistory.value.filter(m => m.role !== 'system').length;
+                                    if (msgCount > 0 && msgCount % settings.plotSummaryInterval === 0) {
+                                        autoPlotSummary();
+                                    }
                                 }
 
                                 break; // Success
@@ -5090,8 +5146,11 @@ ${rawHtml}
                         settings.apiConfigs.push({
                             name: '配置 ' + (settings.apiConfigs.length + 1),
                             apiUrl: settings.apiUrl || '',
-                            apiKey: '',
-                            model: ''
+                            apiKey: settings.apiKey || '',
+                            qualityModel: settings.qualityModel || '',
+                            balancedModel: settings.balancedModel || '',
+                            fastModel: settings.fastModel || '',
+                            suggestionModel: settings.suggestionModel || ''
                         });
                         saveData();
                     },
@@ -5109,9 +5168,25 @@ ${rawHtml}
                         settings.apiMode = 'custom';
                         settings.apiUrl = cfg.apiUrl;
                         settings.apiKey = cfg.apiKey;
-                        if (cfg.model) settings.model = cfg.model;
+                        if (cfg.qualityModel) settings.qualityModel = cfg.qualityModel;
+                        if (cfg.balancedModel) settings.balancedModel = cfg.balancedModel;
+                        if (cfg.fastModel) settings.fastModel = cfg.fastModel;
+                        if (cfg.suggestionModel) settings.suggestionModel = cfg.suggestionModel;
+                        settings.model = cfg.qualityModel || settings.model;
                         saveData();
                         showToast('已切换到: ' + cfg.name, 'success');
+                    },
+                    saveCurrentToConfig: (index) => {
+                        const cfg = settings.apiConfigs[index];
+                        if (!cfg) return;
+                        cfg.apiUrl = settings.apiUrl;
+                        cfg.apiKey = settings.apiKey;
+                        cfg.qualityModel = settings.qualityModel;
+                        cfg.balancedModel = settings.balancedModel;
+                        cfg.fastModel = settings.fastModel;
+                        cfg.suggestionModel = settings.suggestionModel;
+                        saveData();
+                        showToast('已保存到: ' + cfg.name, 'success');
                     },
                     toggleApiMode: (mode) => {
                         if (settings.apiMode === mode) return;

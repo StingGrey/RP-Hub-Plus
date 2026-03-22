@@ -1171,16 +1171,19 @@
                                         <div class="flex items-center justify-between mb-2">
                                             <input v-model="cfg.name" @click.stop class="text-sm font-bold bg-transparent border-none focus:outline-none focus:ring-0 p-0 w-40 text-gray-800" placeholder="配置名称">
                                             <div class="flex items-center gap-1">
+                                                <button v-if="settings.activeConfigIndex === idx" @click.stop="saveCurrentToConfig(idx)" class="text-[10px] font-bold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded hover:bg-teal-100 transition-all" title="将当前设置保存到此配置">保存</button>
                                                 <span v-if="settings.activeConfigIndex === idx" class="text-[10px] font-bold text-primary-600 bg-primary-100 px-1.5 py-0.5 rounded">使用中</span>
                                                 <button @click.stop="deleteApiConfig(idx)" class="p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all" title="删除">
                                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                                 </button>
                                             </div>
                                         </div>
-                                        <div class="space-y-1.5" @click.stop>
-                                            <input v-model="cfg.apiUrl" type="text" class="w-full text-xs bg-white/80 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono focus:border-primary-400 focus:ring-1 focus:ring-primary-200 focus:outline-none" placeholder="API 地址">
-                                            <input v-model="cfg.apiKey" type="password" class="w-full text-xs bg-white/80 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono focus:border-primary-400 focus:ring-1 focus:ring-primary-200 focus:outline-none" placeholder="API Key">
-                                            <input v-model="cfg.model" type="text" class="w-full text-xs bg-white/80 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono focus:border-primary-400 focus:ring-1 focus:ring-primary-200 focus:outline-none" placeholder="模型名称（可选，留空用全局设置）">
+                                        <div class="text-[10px] text-gray-400 space-y-0.5" @click.stop>
+                                            <div class="truncate font-mono">{{ cfg.apiUrl || '未设置 API 地址' }}</div>
+                                            <div class="flex flex-wrap gap-1 mt-1">
+                                                <span v-if="cfg.qualityModel" class="bg-gray-200/80 px-1 py-0.5 rounded text-gray-500 truncate max-w-[140px]">PRO: {{ cfg.qualityModel }}</span>
+                                                <span v-if="cfg.balancedModel" class="bg-gray-200/80 px-1 py-0.5 rounded text-gray-500 truncate max-w-[140px]">FLASH: {{ cfg.balancedModel }}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1360,6 +1363,20 @@
                                             </button>
                                         </div>
                                         <p class="text-[10px] text-gray-400 mt-2">自动适配 OpenAI / Claude / Gemini / OpenRouter</p>
+                                    </div>
+
+                                    <!-- Auto Plot Summary -->
+                                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:bg-white hover:border-gray-200 hover:shadow-sm transition-all duration-200">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">自动剧情总结</label>
+                                            <span class="text-xs font-mono text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded border border-violet-100">{{ settings.plotSummaryInterval === 0 ? '关闭' : '每 ' + settings.plotSummaryInterval + ' 轮' }}</span>
+                                        </div>
+                                        <input v-model.number="settings.plotSummaryInterval" type="range" min="0" max="30" step="2" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-violet-500 transition-all">
+                                        <div class="flex justify-between text-[10px] text-gray-400 mt-1"><span>关闭</span><span>30轮</span></div>
+                                        <div v-if="settings.plotSummaryInterval > 0" class="mt-3">
+                                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">总结模型（留空用建议回复模型）</label>
+                                            <input v-model="settings.plotSummaryModel" type="text" class="w-full text-xs bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono focus:border-violet-400 focus:ring-1 focus:ring-violet-200 focus:outline-none" placeholder="留空使用默认模型">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
