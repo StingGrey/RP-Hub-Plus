@@ -1907,6 +1907,9 @@
                         <button @click="editorTab = 'first_mes'" :class="['flex-1 px-4 py-2 text-sm font-bold transition-all rounded-lg whitespace-nowrap', editorTab === 'first_mes' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50']">
                             开场白
                         </button>
+                        <button @click="editorTab = 'memory'" :class="['flex-1 px-4 py-2 text-sm font-bold transition-all rounded-lg whitespace-nowrap', editorTab === 'memory' ? 'bg-white text-violet-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50']">
+                            记忆
+                        </button>
                     </div>
                 </div>
                 <div class="flex-1 overflow-y-auto p-3 md:p-8 custom-scrollbar flex flex-col">
@@ -1963,6 +1966,19 @@
                             <span class="text-[10px] text-gray-400 font-mono bg-gray-100 px-1.5 py-0.5 rounded">{{ (editingCharacter.data.first_mes || '').length }} 字</span>
                         </div>
                         <textarea v-model="editingCharacter.data.first_mes" class="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-gray-800 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:outline-none flex-1 resize-none shadow-inner transition-all leading-relaxed" placeholder="角色在对话开始时说的第一句话..."></textarea>
+                    </div>
+
+                    <!-- Plot Memory -->
+                    <div v-if="editorTab === 'memory'" class="animate-fade-in h-full flex flex-col">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-sm font-bold text-violet-600">剧情记忆 (Plot Memory)</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] text-gray-400 font-mono bg-gray-100 px-1.5 py-0.5 rounded">{{ (editingCharacter.data.plot_memory || '').length }} 字</span>
+                                <button v-if="editingCharacter.data.plot_memory" @click="editingCharacter.data.plot_memory = ''" class="text-[10px] text-red-400 hover:text-red-600 font-bold px-1.5 py-0.5 rounded hover:bg-red-50 transition-all">清空</button>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-2">AI 会自动通过 &lt;plot&gt; 标签记录重要剧情。你也可以手动编辑。</p>
+                        <textarea v-model="editingCharacter.data.plot_memory" class="w-full bg-violet-50/50 border border-violet-200 rounded-xl px-4 py-3 text-gray-800 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 focus:outline-none flex-1 resize-none shadow-inner transition-all leading-relaxed" placeholder="AI 会在重大剧情转折时自动记录到这里...&#10;&#10;例如：&#10;主角与精灵族结盟&#10;获得魔法剑「星辉」&#10;敌方将军被击败，但逃脱了"></textarea>
                     </div>
                 </div>
                 <div class="p-3 md:p-5 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">

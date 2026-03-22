@@ -2422,13 +2422,26 @@ ${rawHtml}
                         userPrompt += `\n\n[用户个性化记忆]\n${user.bio_memory}`;
                     }
 
+                    // Inject character plot memory
+                    const plotMemory = currentCharacter.value.plot_memory;
+                    if (plotMemory) {
+                        userPrompt += `\n\n[剧情记忆 - ${currentCharacter.value.name}]\n${plotMemory}`;
+                    }
+
                     // 添加个性化记忆指令到 System Prompt
                     const memoryInstruction = `\n\n[个性化记忆指令]
 1. 目标：识别并记录用户的长期习惯、个人细节、沟通偏好或价值观。
-2. 禁令：严禁记录特定于当前角色扮演剧本的临时信息。例如：不要记录用户的临时身份（如“用户是帝国将军”）、剧情进展（如“用户刚才买了一把剑”）或针对特定角色的互动（如“用户喜欢摸这个角色的狐狸尾巴”）。
-3. 重点：关注跨场景的特征。例如：用户喜欢的文学/艺术风格、对 AI 输出的具体要求（如“喜欢细腻的心理描写”）、生活习惯（如“用户习惯晚睡”）、称呼偏好等。
+2. 禁令：严禁记录特定于当前角色扮演剧本的临时信息。例如：不要记录用户的临时身份（如”用户是帝国将军”）、剧情进展（如”用户刚才买了一把剑”）或针对特定角色的互动（如”用户喜欢摸这个角色的狐狸尾巴”）。
+3. 重点：关注跨场景的特征。例如：用户喜欢的文学/艺术风格、对 AI 输出的具体要求（如”喜欢细腻的心理描写”）、生活习惯（如”用户习惯晚睡”）、称呼偏好等。
 4. 格式：将新发现的信息输出在 <bio> 标签内。例如：<bio>用户在交流中倾向于温和、理性的讨论方式。</bio>
-5. 限制：不要重复记录已存在的信息。请勿使用 <bio> 记录任何临时或剧本特定的状态。`;
+5. 限制：不要重复记录已存在的信息。请勿使用 <bio> 记录任何临时或剧本特定的状态。
+
+[剧情记忆指令]
+1. 目标：记录当前角色扮演中的重要剧情信息，帮助维持故事连贯性。
+2. 记录范围：关键事件、人物关系变化、重要地点/物品、角色状态变化、未解决的伏笔等。
+3. 格式：将剧情关键信息输出在 <plot> 标签内。例如：<plot>主角在第三章获得了魔法剑”星辉”，并与精灵族结盟。</plot>
+4. 限制：只记录重要的、影响后续剧情的信息。不要记录每一句对话细节。不要重复已有的记忆内容。
+5. 时机：在发生重大剧情转折、新人物登场、重要物品获得/失去、关系变化时记录。`;
                     
                     // Helper to join content with comments
                     const joinContent = (entries) => entries.map(e => `[${e.comment || 'Entry'}]\n${e.content}`).join('\n\n');
@@ -2908,13 +2921,42 @@ ${rawHtml}
                                     if (hasNewBio) {
                                         // Remove <bio> tags from main content part only
                                         mainContentPart = mainContentPart.replace(bioRegex, '').trim();
-                                        
+
                                         // Reassemble content: CoT + Processed Main Content
                                         assistantMessage.content = cotPart + mainContentPart;
-                                        
+
                                         // Save user data
                                         saveData();
                                         showToast('已更新个性化记忆', 'success');
+                                    }
+
+                                    // --- Plot Memory Processing ---
+                                    // Extract <plot> content, save to current character's plot_memory
+                                    const plotRegex = /<plot>(.*?)<\/plot>/gs;
+                                    let hasNewPlot = false;
+                                    let plotMatch;
+                                    // Re-read mainContentPart in case bio processing modified it
+                                    const currentMain = hasNewBio ? mainContentPart : content.substring(mainContentStartIndex);
+
+                                    while ((plotMatch = plotRegex.exec(currentMain)) !== null) {
+                                        const newPlot = plotMatch[1].trim();
+                                        if (newPlot && currentCharacter.value) {
+                                            if (currentCharacter.value.plot_memory) {
+                                                currentCharacter.value.plot_memory += '\n' + newPlot;
+                                            } else {
+                                                currentCharacter.value.plot_memory = newPlot;
+                                            }
+                                            hasNewPlot = true;
+                                            console.log('New Plot Memory Added:', newPlot);
+                                        }
+                                    }
+
+                                    if (hasNewPlot) {
+                                        // Remove <plot> tags from display
+                                        const finalMain = (hasNewBio ? mainContentPart : content.substring(mainContentStartIndex)).replace(plotRegex, '').trim();
+                                        assistantMessage.content = cotPart + finalMain;
+                                        saveData();
+                                        showToast('已更新剧情记忆', 'info');
                                     }
                                     // -----------------------------
                                 }
