@@ -190,55 +190,58 @@
         <div v-if="showMobileMenu" @click="showMobileMenu = false" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 md:hidden transition-opacity animate-fade-in"></div>
 
         <!-- Sidebar (Desktop & Mobile Drawer) -->
-        <div :class="['fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-200 transform transition-transform duration-300 md:relative md:translate-x-0 flex flex-col shadow-lg md:shadow-none md:rounded-none rounded-r-2xl', showMobileMenu ? 'translate-x-0' : '-translate-x-full']">
+        <div :class="['fixed inset-y-0 left-0 z-50 bg-white border-r border-gray-200 transform transition-all duration-300 md:relative md:translate-x-0 flex flex-col shadow-lg md:shadow-none md:rounded-none rounded-r-2xl', showMobileMenu ? 'translate-x-0 w-72' : '-translate-x-full w-72', isSidebarCollapsed ? 'md:w-16' : 'md:w-72']">
             <!-- Sidebar Header -->
             <div class="h-16 flex items-center justify-between px-6 border-b border-gray-100">
-                <div class="font-bold text-xl bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent">RolePlay Hub</div>
+                <div v-show="!isSidebarCollapsed" class="font-bold text-xl bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent">RolePlay Hub</div>
+                <button @click="isSidebarCollapsed = !isSidebarCollapsed" class="hidden md:flex p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all" :title="isSidebarCollapsed ? '展开侧边栏' : '收起侧边栏'">
+                    <svg class="w-4 h-4 transition-transform duration-300" :class="{'rotate-180': isSidebarCollapsed}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
+                </button>
             </div>
 
             <!-- Navigation -->
-            <div class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-                <button @click="currentView = 'chat'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'chat' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900']">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-                    聊天
+            <div class="flex-1 overflow-y-auto py-4 px-3 space-y-1" :class="{'px-2': isSidebarCollapsed}">
+                <button @click="currentView = 'chat'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'chat' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isSidebarCollapsed ? 'justify-center px-2' : '']">
+                    <svg class="w-5 h-5" :class="{'mr-3': !isSidebarCollapsed}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                    <span v-show="!isSidebarCollapsed">聊天</span>
                 </button>
-                <button @click="currentView = 'characters'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'characters' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900']">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                    角色卡管理
+                <button @click="currentView = 'characters'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'characters' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isSidebarCollapsed ? 'justify-center px-2' : '']">
+                    <svg class="w-5 h-5" :class="{'mr-3': !isSidebarCollapsed}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <span v-show="!isSidebarCollapsed">角色卡管理</span>
                 </button>
-                <button @click="currentView = 'generator'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'generator' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900']">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    角色卡生成
+                <button @click="currentView = 'generator'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'generator' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isSidebarCollapsed ? 'justify-center px-2' : '']">
+                    <svg class="w-5 h-5" :class="{'mr-3': !isSidebarCollapsed}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <span v-show="!isSidebarCollapsed">角色卡生成</span>
                 </button>
-                <button @click="currentView = 'presets'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'presets' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900']">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                    预设
+                <button @click="currentView = 'presets'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'presets' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isSidebarCollapsed ? 'justify-center px-2' : '']">
+                    <svg class="w-5 h-5" :class="{'mr-3': !isSidebarCollapsed}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    <span v-show="!isSidebarCollapsed">预设</span>
                 </button>
-                <button @click="currentView = 'worldinfo'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'worldinfo' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900']">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-                    世界书
+                <button @click="currentView = 'worldinfo'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'worldinfo' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isSidebarCollapsed ? 'justify-center px-2' : '']">
+                    <svg class="w-5 h-5" :class="{'mr-3': !isSidebarCollapsed}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    <span v-show="!isSidebarCollapsed">世界书</span>
                 </button>
-                <button @click="currentView = 'regex'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'regex' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900']">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
-                    正则脚本
+                <button @click="currentView = 'regex'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'regex' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isSidebarCollapsed ? 'justify-center px-2' : '']">
+                    <svg class="w-5 h-5" :class="{'mr-3': !isSidebarCollapsed}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                    <span v-show="!isSidebarCollapsed">正则脚本</span>
                 </button>
-                <button @click="currentView = 'settings'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'settings' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900']">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    设置
+                <button @click="currentView = 'settings'; showMobileMenu = false" :class="['w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200 font-medium', currentView === 'settings' ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isSidebarCollapsed ? 'justify-center px-2' : '']">
+                    <svg class="w-5 h-5" :class="{'mr-3': !isSidebarCollapsed}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span v-show="!isSidebarCollapsed">设置</span>
                 </button>
                 
             </div>
 
             <!-- User Profile Mini -->
-            <div class="p-4 border-t border-gray-100">
-                <div class="flex items-center">
-                    <div class="w-10 h-10 rounded-full overflow-hidden shadow-sm">
+            <div class="p-4 border-t border-gray-100" :class="{'p-2 flex justify-center': isSidebarCollapsed}">
+                <div class="flex items-center" :class="{'justify-center': isSidebarCollapsed}">
+                    <div class="w-10 h-10 rounded-full overflow-hidden shadow-sm" :class="{'w-8 h-8': isSidebarCollapsed}">
                         <img v-if="user?.avatar" :src="user?.avatar" class="w-full h-full object-cover">
                         <div v-else class="w-full h-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold">
                             {{ user.name.charAt(0).toUpperCase() }}
                         </div>
                     </div>
-                    <div class="ml-3">
+                    <div v-show="!isSidebarCollapsed" class="ml-3">
                         <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
                         <div class="text-xs text-gray-500">User</div>
                     </div>
@@ -456,8 +459,9 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <!-- Main Part -->
-                                            <div v-if="editingMessageIndex !== index" class="markdown-body" v-html="renderMarkdown(parseCot(msg.content).main, msg.role)"></div>
+                                            <!-- Main Part: full render for recent messages, plain text for older ones -->
+                                            <div v-if="editingMessageIndex !== index && index >= chatHistory.length - (settings.renderLayerLimit > 100 ? 99999 : settings.renderLayerLimit)" class="markdown-body" v-html="renderMarkdown(parseCot(msg.content).main, msg.role)"></div>
+                                            <div v-else-if="editingMessageIndex !== index" class="markdown-body text-sm whitespace-pre-wrap" style="content-visibility:auto">{{ parseCot(msg.content).main }}</div>
                                             <!-- Edit Mode -->
                                             <div v-else class="w-full">
                                                 <textarea v-model="editingMessageContent" class="w-full min-h-[120px] p-3 text-sm bg-white border border-primary-300 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none resize-y font-sans" @keydown.ctrl.enter="saveEditMessage" @keydown.meta.enter="saveEditMessage"></textarea>
@@ -1348,6 +1352,17 @@
                                         <div class="flex justify-between text-[10px] text-gray-400 mt-1"><span>∞</span><span>50</span></div>
                                     </div>
 
+                                    <!-- Render Layer Limit -->
+                                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:bg-white hover:border-gray-200 hover:shadow-sm transition-all duration-200">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">渲染层数上限</label>
+                                            <span class="text-xs font-mono text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100">{{ settings.renderLayerLimit > 100 ? '∞ 无限' : settings.renderLayerLimit + ' 层' }}</span>
+                                        </div>
+                                        <input v-model.number="settings.renderLayerLimit" type="range" min="5" max="105" step="5" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500 hover:accent-orange-400 transition-all">
+                                        <div class="flex justify-between text-[10px] text-gray-400 mt-1"><span>5层</span><span>∞</span></div>
+                                        <p class="text-[10px] text-gray-400 mt-1">只有最近N条消息完整渲染Markdown，旧消息显示纯文本，减少卡顿</p>
+                                    </div>
+
                                     <!-- Reasoning Effort -->
                                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:bg-white hover:border-gray-200 hover:shadow-sm transition-all duration-200">
                                         <div class="flex justify-between items-center mb-3">
@@ -1718,29 +1733,6 @@
         </div>
 
         <!-- Modals -->
-
-        <!-- Update Notification Modal -->
-        <div v-if="showUpdateModal" class="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-            <div class="bg-white rounded-xl border border-gray-200 w-full max-w-lg flex flex-col shadow-2xl transform transition-all scale-100 overflow-hidden">
-                <div class="bg-gradient-to-r from-primary-50 to-purple-50 p-4 border-b border-gray-100">
-                    <div class="flex items-center gap-3">
-                        <h3 class="text-xl font-bold text-gray-900">{{ latestUpdate.title }}</h3>
-                        <span class="bg-primary-100 text-primary-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-primary-200 transform translate-y-0.5">New</span>
-                    </div>
-                </div>
-                <div class="p-4 max-h-[60vh] overflow-y-auto custom-scrollbar update-content">
-                    <div class="prose prose-sm prose-gray max-w-none">
-                        <!-- 使用 Markdown 渲染内容，支持富文本，且不应用正则替换 -->
-                        <div class="markdown-body" v-html="renderMarkdown(latestUpdate.content, 'assistant', true)"></div>
-                    </div>
-                </div>
-                <div class="bg-gray-50 p-4 flex justify-end rounded-b-xl border-t border-gray-100">
-                    <button @click="closeUpdateModal" :disabled="updateCountdown > 0" :class="{'opacity-50 cursor-not-allowed': updateCountdown > 0}" class="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-sm hover:shadow transition-all active:scale-95">
-                        知道了 <span v-if="updateCountdown > 0">({{ updateCountdown }}s)</span>
-                    </button>
-                </div>
-            </div>
-        </div>
 
         <!-- User Setup Modal -->
         <!-- User Setup Modal -->

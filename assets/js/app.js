@@ -80,6 +80,7 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                 // --- State ---
                 const currentView = ref('chat');
                 const showMobileMenu = ref(false);
+                const isSidebarCollapsed = ref(false);
                 const showDescriptionPanel = ref(false);
                 const showModelSelector = ref(false);
                 const modelSelectionTarget = ref('model');
@@ -132,58 +133,6 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                 // Removed Friends State
                 
                 // Update Modal Logic
-                const showUpdateModal = ref(false);
-                const updateCountdown = ref(0);
-                let updateCountdownTimer = null;
-                const latestUpdate = reactive({
-                    id: 10100, // 确保这是一个五位数ID，每次更新内容时增加这个数字
-                    date: new Date().toISOString().split('T')[0],
-                    title: '网站公告',
-                    content: `
-### RP-Hub 1.2.1 更新
-
-- 大幅度优化了自动生图/角色卡头像的质量
-- 优化了角色卡工坊的系统内置提示词，减少了生成失败的现象
-
-本项目为全开源公益项目，严禁倒卖源码，二改需经作者授权，Q群1015293774
-
-#### 更新时间：03/18/02:08
-                    `
-                });
-
-                const closeUpdateModal = () => {
-                    if (updateCountdown.value > 0) return;
-                    showUpdateModal.value = false;
-                    if (updateCountdownTimer) {
-                        clearInterval(updateCountdownTimer);
-                        updateCountdownTimer = null;
-                    }
-                    // 记录已读版本ID
-                    localStorage.setItem('roleplay_hub_update_id', latestUpdate.id.toString());
-                };
-
-                const startUpdateCountdown = () => {
-                    updateCountdown.value = 5;
-                    if (updateCountdownTimer) clearInterval(updateCountdownTimer);
-                    updateCountdownTimer = setInterval(() => {
-                        if (updateCountdown.value > 0) {
-                            updateCountdown.value--;
-                        } else {
-                            clearInterval(updateCountdownTimer);
-                            updateCountdownTimer = null;
-                        }
-                    }, 1000);
-                };
-
-                const checkUpdate = () => {
-                    const lastId = localStorage.getItem('roleplay_hub_update_id');
-                    // 如果没有记录，或者记录的ID小于当前ID，则显示弹窗
-                    if (!lastId || parseInt(lastId) < latestUpdate.id) {
-                        showUpdateModal.value = true;
-                        startUpdateCountdown();
-                    }
-                };
-
                 const showConfirmModal = ref(false);
                 const confirmMessage = ref('');
                 const confirmCallback = ref(null);
@@ -272,6 +221,7 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                     reasoningEffort: 'off',
                     plotSummaryInterval: 0,
                     plotSummaryModel: '',
+                    renderLayerLimit: 30,
                     theme: 'auto'
                 });
 
@@ -4227,7 +4177,6 @@ ${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}�
                     if (!authed) return; // Show login page
 
                     fetchQuota(); // Fetch quota on load
-                    checkUpdate(); // Check for updates
                     loadPasskeys(); // Load registered passkeys
 
                     await loadData();
@@ -4654,10 +4603,9 @@ ${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}�
                     // Auth
                     isAuthenticated, loginForm, loginLoading, loginError, login, logout, passkeyLogin, checkAuth, apiRequest,
                     registeredPasskeys, registerPasskey, deletePasskey, loadPasskeys,
-                    currentView, showMobileMenu, showDescriptionPanel, showModelSelector, modelSelectionTarget, showChatModelSelector, showCharacterEditor, showAddCharacterMenu, showPresetEditor,
+                    currentView, showMobileMenu, isSidebarCollapsed, showDescriptionPanel, showModelSelector, modelSelectionTarget, showChatModelSelector, showCharacterEditor, showAddCharacterMenu, showPresetEditor,
                     showExportModal, exportType, exportItems, selectedExportIndices, // Export Modal
                     showCharacterExportModal, characterToExportIndex, openCharacterExportModal, confirmCharacterExport, // Character Export Modal
-                    showUpdateModal, updateCountdown, latestUpdate, closeUpdateModal, // Update Modal
                     showConfirmModal, confirmMessage, modelMode, // Export for template
                     isGenerating, isCompressing, contextSummary, isRemoteGenerating, remoteEstimatedTime, isReceiving, isThinking, userInput, modelSearchQuery, characterSearchQuery, availableModels, filteredModels, filteredCharacters,
                     user, settings, characters, currentCharacter, currentCharacterIndex, chatHistory, presets, regexScripts, worldInfo,
