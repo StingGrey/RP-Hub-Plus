@@ -1151,6 +1151,41 @@
                                 </div>
                             </div>
 
+                            <!-- Custom API Configs List -->
+                            <div v-if="settings.apiMode === 'custom'" class="mb-6">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">我的配置</h4>
+                                    <button @click="addApiConfig" class="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-primary-50 transition-all">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                        添加配置
+                                    </button>
+                                </div>
+                                <div v-if="settings.apiConfigs.length === 0" class="text-center py-6 text-gray-400 text-sm bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                    暂无自定义配置，点击"添加配置"创建
+                                </div>
+                                <div class="space-y-2">
+                                    <div v-for="(cfg, idx) in settings.apiConfigs" :key="idx"
+                                         class="p-3 rounded-xl border-2 transition-all cursor-pointer group"
+                                         :class="settings.activeConfigIndex === idx ? 'border-primary-500 bg-primary-50/50 shadow-sm' : 'border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-white'"
+                                         @click="applyApiConfig(idx)">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <input v-model="cfg.name" @click.stop class="text-sm font-bold bg-transparent border-none focus:outline-none focus:ring-0 p-0 w-40 text-gray-800" placeholder="配置名称">
+                                            <div class="flex items-center gap-1">
+                                                <span v-if="settings.activeConfigIndex === idx" class="text-[10px] font-bold text-primary-600 bg-primary-100 px-1.5 py-0.5 rounded">使用中</span>
+                                                <button @click.stop="deleteApiConfig(idx)" class="p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all" title="删除">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-1.5" @click.stop>
+                                            <input v-model="cfg.apiUrl" type="text" class="w-full text-xs bg-white/80 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono focus:border-primary-400 focus:ring-1 focus:ring-primary-200 focus:outline-none" placeholder="API 地址">
+                                            <input v-model="cfg.apiKey" type="password" class="w-full text-xs bg-white/80 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono focus:border-primary-400 focus:ring-1 focus:ring-primary-200 focus:outline-none" placeholder="API Key">
+                                            <input v-model="cfg.model" type="text" class="w-full text-xs bg-white/80 border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono focus:border-primary-400 focus:ring-1 focus:ring-primary-200 focus:outline-none" placeholder="模型名称（可选，留空用全局设置）">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Main API Inputs -->
                             <div class="grid grid-cols-1 gap-5">
                                 <div class="group">

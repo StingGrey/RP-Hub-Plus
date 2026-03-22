@@ -247,6 +247,8 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                     autoFetchModels: true,
                     stream: true,
                     apiMode: 'public', // 'public' or 'custom'
+                    activeConfigIndex: 0,
+                    apiConfigs: [],
                     customApiUrl: '',
                     customApiKey: '',
                     customModel: '',
@@ -5042,6 +5044,33 @@ ${rawHtml}
 
                     // Auto Image Gen Inquiry
                     showAutoImageGenModal,
+                    addApiConfig: () => {
+                        settings.apiConfigs.push({
+                            name: '配置 ' + (settings.apiConfigs.length + 1),
+                            apiUrl: settings.apiUrl || '',
+                            apiKey: '',
+                            model: ''
+                        });
+                        saveData();
+                    },
+                    deleteApiConfig: (index) => {
+                        settings.apiConfigs.splice(index, 1);
+                        if (settings.activeConfigIndex >= settings.apiConfigs.length) {
+                            settings.activeConfigIndex = Math.max(0, settings.apiConfigs.length - 1);
+                        }
+                        saveData();
+                    },
+                    applyApiConfig: (index) => {
+                        const cfg = settings.apiConfigs[index];
+                        if (!cfg) return;
+                        settings.activeConfigIndex = index;
+                        settings.apiMode = 'custom';
+                        settings.apiUrl = cfg.apiUrl;
+                        settings.apiKey = cfg.apiKey;
+                        if (cfg.model) settings.model = cfg.model;
+                        saveData();
+                        showToast('已切换到: ' + cfg.name, 'success');
+                    },
                     toggleApiMode: (mode) => {
                         if (settings.apiMode === mode) return;
                         
