@@ -152,6 +152,7 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                 const toasts = ref([]);
                 const chatContainer = ref(null);
                 const chatRestorePending = ref(false);
+                const loadingOlderMessages = ref(false);
                 const inputBox = ref(null);
                 const messageElements = ref([]);
 
@@ -219,6 +220,9 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                         if (!container || container.dataset.autoScrollBound === '1') return;
 
                         container.dataset.autoScrollBound = '1';
+                        container.addEventListener('scroll', () => {
+                            autoLoadOlderMessagesIfNeeded();
+                        }, { passive: true });
                         container.addEventListener('load', (event) => {
                             const tagName = event.target && event.target.tagName;
                             if (tagName !== 'IMG' && tagName !== 'IFRAME') return;
@@ -524,26 +528,46 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                 });
 
                 const loadOlderMessages = async () => {
-                    if (hiddenChatMessageCount.value <= 0) return;
+                    if (hiddenChatMessageCount.value <= 0 || loadingOlderMessages.value) return false;
+
+                    loadingOlderMessages.value = true;
 
                     const displayCount = getDisplayRecentMessageCount();
                     const previousHeight = chatContainer.value ? chatContainer.value.scrollHeight : 0;
 
-                    if (Number.isFinite(displayCount)) {
-                        loadedChatMessageCount.value = Math.min(
-                            chatHistory.value.length,
-                            (loadedChatMessageCount.value || displayCount) + displayCount
-                        );
-                    } else {
-                        loadedChatMessageCount.value = Infinity;
+                    try {
+                        if (Number.isFinite(displayCount)) {
+                            loadedChatMessageCount.value = Math.min(
+                                chatHistory.value.length,
+                                (loadedChatMessageCount.value || displayCount) + displayCount
+                            );
+                        } else {
+                            loadedChatMessageCount.value = Infinity;
+                        }
+
+                        await nextTick();
+
+                        if (chatContainer.value) {
+                            const nextHeight = chatContainer.value.scrollHeight;
+                            chatContainer.value.scrollTop += nextHeight - previousHeight;
+                        }
+                    } finally {
+                        setTimeout(() => {
+                            loadingOlderMessages.value = false;
+                            autoLoadOlderMessagesIfNeeded();
+                        }, 80);
                     }
 
-                    await nextTick();
+                    return true;
+                };
 
-                    if (chatContainer.value) {
-                        const nextHeight = chatContainer.value.scrollHeight;
-                        chatContainer.value.scrollTop += nextHeight - previousHeight;
-                    }
+                const autoLoadOlderMessagesIfNeeded = () => {
+                    const container = chatContainer.value;
+                    if (!container || chatRestorePending.value || loadingOlderMessages.value) return;
+                    if (hiddenChatMessageCount.value <= 0) return;
+                    if (container.scrollTop > 24) return;
+
+                    loadOlderMessages();
                 };
 
                 const canCompressContext = computed(() => {

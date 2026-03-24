@@ -391,12 +391,6 @@
                         <p>开始与 {{ currentCharacter.name }} 对话吧</p>
                     </div>
 
-                    <div v-if="hiddenChatMessageCount > 0" class="sticky top-16 z-10 flex justify-center pb-2">
-                        <button @click="loadOlderMessages" class="px-4 py-2 text-xs font-bold text-sky-700 bg-sky-50/95 border border-sky-200 rounded-full shadow-sm hover:bg-sky-100 transition-all backdrop-blur-sm">
-                            加载更早消息 (还有 {{ hiddenChatMessageCount }} 条)
-                        </button>
-                    </div>
-
                     <div v-for="(msg, index) in visibleChatHistory" :key="visibleChatStartIndex + index" ref="messageElements" :data-role="msg.role"
                          v-show="!(msg.role === 'assistant' && visibleChatStartIndex + index === chatHistory.length - 1 && isThinking && !msg.content)"
                          :class="['flex w-full', msg.shouldAnimate ? 'animate-message-in' : '', msg.isSelf ? 'justify-end' : 'justify-start']"
