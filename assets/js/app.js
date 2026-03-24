@@ -151,8 +151,89 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                 const availableModels = ref([]);
                 const toasts = ref([]);
                 const chatContainer = ref(null);
+                const chatRestorePending = ref(false);
                 const inputBox = ref(null);
                 const messageElements = ref([]);
+
+                const isChatNearBottom = (threshold = 160) => {
+                    const container = chatContainer.value;
+                    if (!container) return true;
+                    return (container.scrollHeight - container.scrollTop - container.clientHeight) <= threshold;
+                };
+
+                const scheduleScrollToBottom = ({
+                    attempts = 2,
+                    interval = 80,
+                    behavior = 'auto',
+                    force = false,
+                    markRestore = false
+                } = {}) => {
+                    if (!settings.autoScroll && !force) return;
+
+                    if (markRestore) {
+                        chatRestorePending.value = true;
+                    }
+
+                    nextTick(() => {
+                        let remaining = Math.max(1, attempts);
+
+                        const step = () => {
+                            const container = chatContainer.value;
+                            if (!container) {
+                                if (markRestore) chatRestorePending.value = false;
+                                return;
+                            }
+
+                            container.scrollTo({
+                                top: container.scrollHeight,
+                                behavior: remaining === attempts ? behavior : 'auto'
+                            });
+
+                            remaining -= 1;
+                            if (remaining > 0) {
+                                setTimeout(step, interval);
+                            } else if (markRestore) {
+                                setTimeout(() => {
+                                    chatRestorePending.value = false;
+                                }, 80);
+                            }
+                        };
+
+                        requestAnimationFrame(step);
+                    });
+                };
+
+                const restoreChatViewport = () => {
+                    scheduleScrollToBottom({
+                        attempts: 8,
+                        interval: 140,
+                        behavior: 'auto',
+                        force: true,
+                        markRestore: true
+                    });
+                };
+
+                const bindChatAutoScrollObservers = () => {
+                    nextTick(() => {
+                        const container = chatContainer.value;
+                        if (!container || container.dataset.autoScrollBound === '1') return;
+
+                        container.dataset.autoScrollBound = '1';
+                        container.addEventListener('load', (event) => {
+                            const tagName = event.target && event.target.tagName;
+                            if (tagName !== 'IMG' && tagName !== 'IFRAME') return;
+
+                            if (chatRestorePending.value || isChatNearBottom(240)) {
+                                scheduleScrollToBottom({
+                                    attempts: 4,
+                                    interval: 120,
+                                    behavior: 'auto',
+                                    force: true
+                                });
+                            }
+                        }, true);
+                    });
+                };
 
                 const autoResizeInput = () => {
                     if (inputBox.value) {
@@ -573,8 +654,14 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                         // Add timestamp to force refresh
                         generatorUrl.value = `./character/index.html?t=${Date.now()}`;
                     } else if (newView === 'chat') {
-                        // When switching back to chat, scroll to bottom
-                        scrollToBottom();
+                        // When switching back to chat, keep the latest messages in view immediately.
+                        bindChatAutoScrollObservers();
+                        scheduleScrollToBottom({
+                            attempts: 4,
+                            interval: 120,
+                            behavior: 'auto',
+                            force: true
+                        });
                     } else if (newView === 'presets') {
                         nextTick(() => {
                             const el = document.getElementById('presets-list');
@@ -661,6 +748,7 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                             isAuthenticated.value = true;
                             loginForm.password = '';
                             await loadData();
+                            bindChatAutoScrollObservers();
                             loadPasskeys();
                         } else {
                             loginError.value = data.error || '登录失败';
@@ -2247,20 +2335,8 @@ ${rawHtml}
                     await generateResponse(startTime);
                 };
 
-                const scrollToBottom = () => {
-                    if (!settings.autoScroll) return;
-                    // Use nextTick to ensure the DOM has been updated before we try to scroll
-                    nextTick(() => {
-                        if (chatContainer.value) {
-                            // The scrollHeight might not be final right after DOM update due to rendering.
-                            // A small timeout gives the browser time to calculate the final layout.
-                            setTimeout(() => {
-                                if (chatContainer.value) {
-                                    chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
-                                }
-                            }, 50);
-                        }
-                    });
+                const scrollToBottom = (options = {}) => {
+                    scheduleScrollToBottom(options);
                 };
 
                 const clearChat = () => {
@@ -3826,7 +3902,8 @@ ${manual ? '【任务】请补全尚未写入剧情记忆的新内容，避免�
 
                     saveData(); // Save the switch immediately
                     await nextTick();
-                    scrollToBottom();
+                    bindChatAutoScrollObservers();
+                    restoreChatViewport();
                 };
 
                 const handleAvatarUpload = (event) => {
@@ -4640,6 +4717,8 @@ ${manual ? '【任务】请补全尚未写入剧情记忆的新内容，避免�
                     const authed = await checkAuth();
                     if (!authed) return; // Show login page
 
+                    bindChatAutoScrollObservers();
+
                     fetchQuota(); // Fetch quota on load
                     loadPasskeys(); // Load registered passkeys
 
@@ -5023,7 +5102,8 @@ ${manual ? '【任务】请补全尚未写入剧情记忆的新内容，避免�
 
                        // showToast(`欢迎回来，${user.name}`, 'success'); // Removed per user request
                        await nextTick();
-                       scrollToBottom();
+                       bindChatAutoScrollObservers();
+                       restoreChatViewport();
                    } else if (characters.value.length > 0) {
                         // Fallback to first character if no last active
                         selectCharacter(0);
@@ -5076,7 +5156,7 @@ ${manual ? '【任务】请补全尚未写入剧情记忆的新内容，避免�
                     showConfirmModal, confirmMessage, modelMode, // Export for template
                     isGenerating, isCompressing, contextSummary, isRemoteGenerating, remoteEstimatedTime, isReceiving, isThinking, userInput, modelSearchQuery, characterSearchQuery, availableModels, filteredModels, filteredCharacters,
                     user, settings, characters, currentCharacter, currentCharacterIndex, chatHistory, presets, regexScripts, worldInfo,
-                    activeRegexCount, activeWorldInfoCount, totalContextLength, visibleChatHistory, visibleChatStartIndex, hiddenChatMessageCount, canCompressContext,
+                    activeRegexCount, activeWorldInfoCount, totalContextLength, visibleChatHistory, visibleChatStartIndex, hiddenChatMessageCount, canCompressContext, chatRestorePending,
                     editingCharacter, editingPreset, toasts, chatContainer, inputBox, messageElements,
                     lastUserMessageIndex, // Expose to template
                     isGeneratorLoading, generatorUrl, onGeneratorLoad, syncSettingsToGenerator, // Generator exports
