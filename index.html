@@ -390,9 +390,15 @@
                         <img :src="currentCharacter?.avatar" class="w-24 h-24 rounded-full mb-4 opacity-50 grayscale">
                         <p>开始与 {{ currentCharacter.name }} 对话吧</p>
                     </div>
-                    
-                    <div v-else v-for="(msg, index) in chatHistory" :key="index" ref="messageElements" :data-role="msg.role"
-                         v-show="!(msg.role === 'assistant' && index === chatHistory.length - 1 && isThinking && !msg.content)"
+
+                    <div v-if="hiddenChatMessageCount > 0" class="sticky top-16 z-10 flex justify-center pb-2">
+                        <button @click="loadOlderMessages" class="px-4 py-2 text-xs font-bold text-sky-700 bg-sky-50/95 border border-sky-200 rounded-full shadow-sm hover:bg-sky-100 transition-all backdrop-blur-sm">
+                            加载更早消息 (还有 {{ hiddenChatMessageCount }} 条)
+                        </button>
+                    </div>
+
+                    <div v-for="(msg, index) in visibleChatHistory" :key="visibleChatStartIndex + index" ref="messageElements" :data-role="msg.role"
+                         v-show="!(msg.role === 'assistant' && visibleChatStartIndex + index === chatHistory.length - 1 && isThinking && !msg.content)"
                          :class="['flex w-full', msg.shouldAnimate ? 'animate-message-in' : '', msg.isSelf ? 'justify-end' : 'justify-start']"
                          :style="{ animationDelay: msg.isSelf ? '0ms' : '0ms' }">
                         <div :class="['flex max-w-[99%] md:max-w-[75%] lg:max-w-[70%]', (parseCot(msg.content).cot) ? 'w-full' : '', msg.isSelf ? 'flex-row-reverse' : 'flex-row']">
@@ -437,7 +443,7 @@
                                             <div v-if="parseCot(msg.content).cot" class="cot-wrapper">
                                                 <div class="cot-ui" :class="{ 'is-open': msg.isCotOpen }">
                                                     <div class="cot-header" @click="msg.isCotOpen = !msg.isCotOpen">
-                                                        <div v-if="index === chatHistory.length - 1 && (isGenerating || isRemoteGenerating) && !parseCot(msg.content).isFinished" class="flex items-center text-primary-600">
+                                                        <div v-if="visibleChatStartIndex + index === chatHistory.length - 1 && (isGenerating || isRemoteGenerating) && !parseCot(msg.content).isFinished" class="flex items-center text-primary-600">
                                                             <svg class="animate-spin w-3.5 h-3.5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -460,8 +466,8 @@
                                                 </div>
                                             </div>
                                             <!-- Main Part: full render for recent messages, plain text for older ones -->
-                                            <div v-if="editingMessageIndex !== index && index >= chatHistory.length - (settings.renderLayerLimit > 100 ? 99999 : settings.renderLayerLimit)" class="markdown-body" v-html="renderMarkdown(parseCot(msg.content).main, msg.role)"></div>
-                                            <div v-else-if="editingMessageIndex !== index" class="markdown-body text-sm whitespace-pre-wrap" style="content-visibility:auto">{{ parseCot(msg.content).main }}</div>
+                                            <div v-if="editingMessageIndex !== visibleChatStartIndex + index && visibleChatStartIndex + index >= chatHistory.length - (settings.renderLayerLimit > 100 ? 99999 : settings.renderLayerLimit)" class="markdown-body" v-html="renderMarkdown(parseCot(msg.content).main, msg.role)"></div>
+                                            <div v-else-if="editingMessageIndex !== visibleChatStartIndex + index" class="markdown-body text-sm whitespace-pre-wrap" style="content-visibility:auto">{{ parseCot(msg.content).main }}</div>
                                             <!-- Edit Mode -->
                                             <div v-else class="w-full">
                                                 <textarea v-model="editingMessageContent" class="w-full min-h-[120px] p-3 text-sm bg-white border border-primary-300 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none resize-y font-sans" @keydown.ctrl.enter="saveEditMessage" @keydown.meta.enter="saveEditMessage"></textarea>
@@ -475,16 +481,16 @@
                                     
                                     <!-- Message Actions -->
                                     <div :class="['absolute bottom-0 -mb-8 flex items-center space-x-1 md:space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200', msg.isSelf ? 'right-0' : 'left-0']">
-                                        <button v-if="index === chatHistory.length - 1" @click="regenerateMessage(index)" class="p-1 md:p-1.5 text-gray-400 hover:text-primary-600 bg-white/70 backdrop-blur-[2px] rounded-full border border-white/20 hover:bg-white hover:shadow-sm transition-all" title="重新生成">
+                                        <button v-if="visibleChatStartIndex + index === chatHistory.length - 1" @click="regenerateMessage(visibleChatStartIndex + index)" class="p-1 md:p-1.5 text-gray-400 hover:text-primary-600 bg-white/70 backdrop-blur-[2px] rounded-full border border-white/20 hover:bg-white hover:shadow-sm transition-all" title="重新生成">
                                             <svg class="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                                         </button>
-                                        <button @click="startEditMessage(index)" class="p-1 md:p-1.5 text-gray-400 hover:text-primary-600 bg-white/70 backdrop-blur-[2px] rounded-full border border-white/20 hover:bg-white hover:shadow-sm transition-all" title="编辑">
+                                        <button @click="startEditMessage(visibleChatStartIndex + index)" class="p-1 md:p-1.5 text-gray-400 hover:text-primary-600 bg-white/70 backdrop-blur-[2px] rounded-full border border-white/20 hover:bg-white hover:shadow-sm transition-all" title="编辑">
                                             <svg class="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                         </button>
                                         <button @click="copyMessage(msg.content)" class="p-1 md:p-1.5 text-gray-400 hover:text-primary-600 bg-white/70 backdrop-blur-[2px] rounded-full border border-white/20 hover:bg-white hover:shadow-sm transition-all" title="复制">
                                             <svg class="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                         </button>
-                                        <button @click="deleteMessage(index)" class="p-1 md:p-1.5 text-gray-400 hover:text-red-600 bg-white/70 backdrop-blur-[2px] rounded-full border border-white/20 hover:bg-white hover:shadow-sm transition-all" title="删除">
+                                        <button @click="deleteMessage(visibleChatStartIndex + index)" class="p-1 md:p-1.5 text-gray-400 hover:text-red-600 bg-white/70 backdrop-blur-[2px] rounded-full border border-white/20 hover:bg-white hover:shadow-sm transition-all" title="删除">
                                             <svg class="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                         </button>
                                     </div>
@@ -551,7 +557,7 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                             </button>
                             <!-- Context Compress Button -->
-                            <button @click="compressContext()" :disabled="isCompressing || isGenerating || chatHistory.length <= (settings.keepRecentMessages || 10)" :class="[isCompressing ? 'bg-primary-500 text-white shadow-primary-500/30 border-transparent' : 'bg-white/90 text-gray-500 hover:text-gray-700 hover:bg-white border-gray-200']" class="backdrop-blur-md rounded-full w-8 h-8 flex items-center justify-center border shadow-sm transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed" title="压缩上下文">
+                            <button @click="compressContext()" :disabled="isCompressing || isGenerating || !canCompressContext" :class="[isCompressing ? 'bg-primary-500 text-white shadow-primary-500/30 border-transparent' : 'bg-white/90 text-gray-500 hover:text-gray-700 hover:bg-white border-gray-200']" class="backdrop-blur-md rounded-full w-8 h-8 flex items-center justify-center border shadow-sm transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed" title="压缩上下文">
                                 <svg v-if="!isCompressing" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V6a2 2 0 012-2h12a2 2 0 012 2v2M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M9 12h6M12 9v6"></path></svg>
                                 <svg v-else class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             </button>
@@ -1345,11 +1351,23 @@
                                     <!-- Keep Recent Messages -->
                                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:bg-white hover:border-gray-200 hover:shadow-sm transition-all duration-200">
                                         <div class="flex justify-between items-center mb-3">
-                                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">保留最近消息数</label>
+                                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">压缩后保留原文数</label>
                                             <span class="text-xs font-mono text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">{{ settings.keepRecentMessages === 0 ? '∞ 无限' : settings.keepRecentMessages }}</span>
                                         </div>
                                         <input v-model.number="settings.keepRecentMessages" type="range" min="0" max="50" step="2" title="0=无限制" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-teal-500 hover:accent-teal-400 transition-all">
                                         <div class="flex justify-between text-[10px] text-gray-400 mt-1"><span>∞</span><span>50</span></div>
+                                        <p class="text-[10px] text-gray-400 mt-1">只影响上下文压缩后保留多少条原始消息，不控制聊天列表显示</p>
+                                    </div>
+
+                                    <!-- Display Recent Messages -->
+                                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:bg-white hover:border-gray-200 hover:shadow-sm transition-all duration-200">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">初始加载消息数</label>
+                                            <span class="text-xs font-mono text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100">{{ settings.displayRecentMessages === 0 ? '∞ 无限' : settings.displayRecentMessages }}</span>
+                                        </div>
+                                        <input v-model.number="settings.displayRecentMessages" type="range" min="0" max="200" step="10" title="0=全部加载" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-sky-500 hover:accent-sky-400 transition-all">
+                                        <div class="flex justify-between text-[10px] text-gray-400 mt-1"><span>∞</span><span>200</span></div>
+                                        <p class="text-[10px] text-gray-400 mt-1">进入聊天时先显示最近 N 条，旧消息可手动继续加载</p>
                                     </div>
 
                                     <!-- Render Layer Limit -->
