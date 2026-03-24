@@ -1410,6 +1410,25 @@
                                             <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">总结模型（留空用建议回复模型）</label>
                                             <input v-model="settings.plotSummaryModel" type="text" class="w-full text-xs bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 font-mono focus:border-violet-400 focus:ring-1 focus:ring-violet-200 focus:outline-none" placeholder="留空使用默认模型">
                                         </div>
+                                        <div class="mt-3 p-3 rounded-lg bg-white border border-violet-100 text-[11px] text-gray-500 space-y-1">
+                                            <div class="flex flex-wrap gap-x-3 gap-y-1">
+                                                <span>待补总结：<b class="text-violet-600">{{ plotSummaryPendingCount }}</b> 条消息</span>
+                                                <span>成功：<b class="text-emerald-600">{{ plotSummaryStatus.successCount }}</b></span>
+                                                <span>失败：<b class="text-rose-600">{{ plotSummaryStatus.failureCount }}</b></span>
+                                            </div>
+                                            <div class="flex flex-wrap gap-x-3 gap-y-1">
+                                                <span>上次触发：{{ formatRelativeTime(plotSummaryStatus.lastTriggerAt) }}</span>
+                                                <span>上次成功：{{ formatRelativeTime(plotSummaryStatus.lastSuccessAt) }}</span>
+                                            </div>
+                                            <div v-if="plotSummaryStatus.lastError" class="text-rose-500 truncate" :title="plotSummaryStatus.lastError">最近错误：{{ plotSummaryStatus.lastError }}</div>
+                                        </div>
+                                        <button
+                                            @click="manualPlotSummary"
+                                            :disabled="!currentCharacter || plotSummaryManualRunning || plotSummaryRunning"
+                                            class="mt-3 w-full py-2 text-xs font-bold rounded-lg border transition-all"
+                                            :class="(!currentCharacter || plotSummaryManualRunning || plotSummaryRunning) ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-violet-600 text-white border-violet-600 hover:bg-violet-700 shadow-sm'">
+                                            {{ plotSummaryManualRunning ? '正在补总结...' : '手动补总结未覆盖部分' }}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -2002,6 +2021,17 @@
                             <div class="flex items-center gap-2">
                                 <span class="text-[10px] text-gray-400 font-mono bg-gray-100 px-1.5 py-0.5 rounded">{{ (editingCharacter.data.plot_memory || '').length }} 字</span>
                                 <button v-if="editingCharacter.data.plot_memory" @click="editingCharacter.data.plot_memory = ''" class="text-[10px] text-red-400 hover:text-red-600 font-bold px-1.5 py-0.5 rounded hover:bg-red-50 transition-all">清空</button>
+                            </div>
+                        </div>
+                        <div class="mb-2 p-2 rounded-lg bg-violet-50 border border-violet-100 text-[11px] text-gray-500 space-y-1">
+                            <div class="flex flex-wrap gap-x-3 gap-y-1">
+                                <span>已覆盖：{{ editingCharacter.data.plotSummaryMeta?.lastCoveredMessageCount || 0 }} 条</span>
+                                <span>成功：{{ editingCharacter.data.plotSummaryMeta?.successCount || 0 }}</span>
+                                <span>失败：{{ editingCharacter.data.plotSummaryMeta?.failureCount || 0 }}</span>
+                            </div>
+                            <div class="flex flex-wrap gap-x-3 gap-y-1">
+                                <span>上次触发：{{ formatRelativeTime(editingCharacter.data.plotSummaryMeta?.lastTriggerAt) }}</span>
+                                <span>上次成功：{{ formatRelativeTime(editingCharacter.data.plotSummaryMeta?.lastSuccessAt) }}</span>
                             </div>
                         </div>
                         <p class="text-xs text-gray-400 mb-2">AI 会自动通过 &lt;plot&gt; 标签记录重要剧情。你也可以手动编辑。</p>

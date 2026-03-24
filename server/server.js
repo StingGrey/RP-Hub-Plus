@@ -14,6 +14,7 @@ const { errorHandler } = require('./middleware');
 const authRoutes = require('./routes/auth');
 const dataRoutes = require('./routes/data');
 const passkeyRoutes = require('./routes/passkey');
+const imageCacheRoutes = require('./routes/imageCache');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -81,6 +82,7 @@ app.use(session({
 app.use('/api/auth', authRoutes);
 app.use('/api/data', dataRoutes);
 app.use('/api/passkey', passkeyRoutes);
+app.use('/api/image-cache', imageCacheRoutes);
 
 // Serve static frontend files (no-cache for development agility)
 app.use(express.static(path.join(__dirname, '..'), {

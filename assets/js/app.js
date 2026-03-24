@@ -227,6 +227,21 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                     theme: 'auto'
                 });
 
+                const plotSummaryRunning = ref(false);
+                const plotSummaryManualRunning = ref(false);
+                const plotSummaryStatus = reactive({
+                    lastTriggerAt: null,
+                    lastSuccessAt: null,
+                    lastFailureAt: null,
+                    lastSummaryPreview: '',
+                    lastError: '',
+                    successCount: 0,
+                    failureCount: 0,
+                    lastCoveredMessageCount: 0,
+                    lastRunMessageCount: 0,
+                    lastMode: ''
+                });
+
                 const syncSettingsToGenerator = () => {
                     const iframe = document.querySelector('iframe[src*="character"]');
                     if (iframe && iframe.contentWindow) {
@@ -600,6 +615,37 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue;
                         throw new Error('SESSION_EXPIRED');
                     }
                     return res;
+                };
+
+                const buildImageCacheRenderUrl = (prompt) => {
+                    const url = new URL(`${API_BASE}/image-cache/render`, window.location.origin + basePath);
+                    url.searchParams.set('prompt', prompt);
+                    return url.toString();
+                };
+
+                const extractImagePrompts = (text) => {
+                    const prompts = [];
+                    const regex = /image###([^#]+)###/g;
+                    let match;
+                    while ((match = regex.exec(text || '')) !== null) {
+                        const prompt = (match[1] || '').trim();
+                        if (prompt) prompts.push(prompt);
+                    }
+                    return [...new Set(prompts)];
+                };
+
+                const warmImageCache = async (prompts = []) => {
+                    if (!prompts.length || !isAuthenticated.value) return;
+                    try {
+                        await apiRequest('POST', '/image-cache/ensure-bulk', {
+                            prompts,
+                            imageStyle: settings.imageStyle,
+                            imageSize: settings.imageSize,
+                            imageGenKey: settings.imageGenKey || ''
+                        });
+                    } catch (e) {
+                        console.warn('Image cache warm-up failed:', e);
+                    }
                 };
 
                 const login = async () => {
@@ -1160,6 +1206,49 @@ ${oldText}
                     debouncedSave();
                 }, { deep: true });
 
+                const formatRelativeTime = (timestamp) => {
+                    if (!timestamp) return '未记录';
+                    const diff = Date.now() - Number(timestamp);
+                    if (!Number.isFinite(diff)) return '未记录';
+                    if (diff < 60_000) return '刚刚';
+                    if (diff < 3_600_000) return Math.floor(diff / 60_000) + ' 分钟前';
+                    if (diff < 86_400_000) return Math.floor(diff / 3_600_000) + ' 小时前';
+                    return Math.floor(diff / 86_400_000) + ' 天前';
+                };
+
+                const getNonSystemMessages = () => chatHistory.value.filter(m => m.role !== 'system');
+                const getNonSystemMessageCount = () => getNonSystemMessages().length;
+
+                const getPlotSummaryRange = () => {
+                    const total = getNonSystemMessageCount();
+                    const covered = Math.max(0, Number(currentCharacter.value?.plotSummaryMeta?.lastCoveredMessageCount || 0));
+                    return { total, covered: Math.min(covered, total), pending: Math.max(0, total - covered) };
+                };
+
+                const plotSummaryPendingCount = computed(() => getPlotSummaryRange().pending);
+
+                const syncPlotSummaryStatus = () => {
+                    const meta = currentCharacter.value?.plotSummaryMeta || {};
+                    plotSummaryStatus.lastTriggerAt = meta.lastTriggerAt || null;
+                    plotSummaryStatus.lastSuccessAt = meta.lastSuccessAt || null;
+                    plotSummaryStatus.lastFailureAt = meta.lastFailureAt || null;
+                    plotSummaryStatus.lastSummaryPreview = meta.lastSummaryPreview || '';
+                    plotSummaryStatus.lastError = meta.lastError || '';
+                    plotSummaryStatus.successCount = meta.successCount || 0;
+                    plotSummaryStatus.failureCount = meta.failureCount || 0;
+                    plotSummaryStatus.lastCoveredMessageCount = meta.lastCoveredMessageCount || 0;
+                    plotSummaryStatus.lastRunMessageCount = meta.lastRunMessageCount || 0;
+                    plotSummaryStatus.lastMode = meta.lastMode || '';
+                };
+
+                const persistPlotSummaryMeta = async (patch = {}) => {
+                    if (!currentCharacter.value) return;
+                    if (!currentCharacter.value.plotSummaryMeta) currentCharacter.value.plotSummaryMeta = {};
+                    Object.assign(currentCharacter.value.plotSummaryMeta, patch);
+                    syncPlotSummaryStatus();
+                    await saveData();
+                };
+
                 // Watch chat history separately to save it specifically
                 watch(chatHistory, async (newHistory) => {
                     if (currentCharacterIndex.value >= 0 && currentCharacter.value && currentCharacter.value.uuid) {
@@ -1416,6 +1505,114 @@ ${oldText}
                         if (script.maxDepth !== null && script.maxDepth !== undefined && depth > script.maxDepth) return;
 
                         try {
+                            // --- NAI Image: function-based replacement ---
+                            if (script.name === 'NAI画图正则') {
+                                result = result.replace(re, (match, prompt) => {
+                                    const safePrompt = (prompt || '').trim();
+                                    const imageUrl = buildImageCacheRenderUrl(safePrompt);
+                                    return '<div style="width: auto; height: auto; max-width: 100%; border: 8px solid transparent; background-image: linear-gradient(45deg, #FFC9D9, #CCE5FF); position: relative; border-radius: 16px; overflow: hidden; display: flex; justify-content: center; align-items: center; animation: gradientBG 3s ease infinite; box-shadow: 0 4px 15px rgba(204,229,255,0.3);"><div style="background: rgba(255,255,255,0.85); backdrop-filter: blur(5px); width: 100%; height: 100%; position: absolute; top: 0; left: 0;"></div><img src="' + imageUrl + '" alt="生成图片" loading="lazy" referrerpolicy="same-origin" style="max-width: 100%; height: auto; width: auto; display: block; object-fit: contain; transition: transform 0.3s ease; position: relative; z-index: 1;"></div><style>@keyframes gradientBG {0% {background-image: linear-gradient(45deg, #FFC9D9, #CCE5FF);}50% {background-image: linear-gradient(225deg, #FFC9D9, #CCE5FF);}100% {background-image: linear-gradient(45deg, #FFC9D9, #CCE5FF);}}</style>';
+                                });
+                                return result;
+                            }
+
+                            // --- Status Card: function-based replacement ---
+                            if (script.name === '状态卡片美化') {
+                                let scPattern = script.regex || script.findRegex || '';
+                                let scFlags = script.flags || script.regexFlags || 'gi';
+                                if (scPattern.startsWith('/') && scPattern.lastIndexOf('/') > 0) {
+                                    const ls = scPattern.lastIndexOf('/');
+                                    const pf = scPattern.substring(ls + 1);
+                                    if (/^[gimsuy]*$/.test(pf)) { scFlags = pf; scPattern = scPattern.substring(1, ls); }
+                                }
+                                const scRe = new RegExp(scPattern, scFlags);
+                                result = result.replace(scRe, (match, name, body) => {
+                                    const lines = (body || '').split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                                    const keyIconMap = {'天':'📅','日':'📅','周':'📅','管理':'📅','程度':'💫','兴奋':'🔥','理智':'🧠','对象':'👁','目标':'🎯','想做':'💭','状态':'✨','锁':'🔒','射':'💦','天数':'📅'};
+                                    function getIcon(key) {
+                                        for (const [k,v] of Object.entries(keyIconMap)) { if (key.includes(k)) return v; }
+                                        return '▸';
+                                    }
+                                    function renderValue(val) {
+                                        // percentage → progress bar
+                                        const pctM = val.match(/^(\d+)%/);
+                                        if (pctM) {
+                                            const pct = Math.min(100, parseInt(pctM[1]));
+                                            const rest = val.slice(pctM[0].length).trim();
+                                            const color = pct >= 80 ? '#f87171' : pct >= 50 ? '#fb923c' : pct >= 30 ? '#facc15' : '#34d399';
+                                            return '<div style="display:flex;flex-direction:column;gap:4px;flex:1">'
+                                                + '<div style="display:flex;justify-content:space-between;align-items:center">'
+                                                + '<span style="color:#e2e8f0;font-size:12px;font-weight:600">' + pct + '%</span>'
+                                                + (rest ? '<span style="color:#94a3b8;font-size:12px">' + rest + '</span>' : '')
+                                                + '</div>'
+                                                + '<div style="height:6px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden">'
+                                                + '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:99px;box-shadow:0 0 8px ' + color + '66;transition:width 0.6s ease"></div>'
+                                                + '</div>'
+                                                + '</div>';
+                                        }
+                                        // star rating ★
+                                        const starM = val.match(/([★☆✦✧⭐]+)/);
+                                        if (starM) {
+                                            const filled = (val.match(/[★✦⭐]/g)||[]).length;
+                                            const total = (val.match(/[★☆✦✧⭐]/g)||[]).length;
+                                            const rest2 = val.replace(/[★☆✦✧⭐]+/g,'').trim();
+                                            const starsHtml = Array.from({length:Math.max(total,5)}).map((_,i) =>
+                                                '<span style="color:' + (i < filled ? '#fbbf24' : 'rgba(255,255,255,0.15)') + ';font-size:13px;text-shadow:' + (i < filled ? '0 0 8px #fbbf2499' : 'none') + '">★</span>'
+                                            ).join('');
+                                            return '<div style="flex:1;display:flex;align-items:center;gap:8px">'
+                                                + '<span style="display:flex;gap:2px">' + starsHtml + '</span>'
+                                                + (rest2 ? '<span style="color:#94a3b8;font-size:12px">' + rest2 + '</span>' : '')
+                                                + '</div>';
+                                        }
+                                        // day count
+                                        const dayM = val.match(/(\d+)(天|日)/);
+                                        if (dayM) {
+                                            const rest3 = val.replace(dayM[0],'').trim();
+                                            return '<span style="flex:1;color:#e2e8f0;font-size:12.5px">'
+                                                + '<span style="font-size:16px;font-weight:800;color:#c7d2fe;letter-spacing:-0.02em">' + dayM[1] + '</span>'
+                                                + '<span style="font-size:12px;color:#818cf8;margin-left:2px">' + dayM[2] + '</span>'
+                                                + (rest3 ? ' <span style="color:#64748b;font-size:12px">' + rest3 + '</span>' : '')
+                                                + '</span>';
+                                        }
+                                        // default
+                                        return '<span style="flex:1;color:#e2e8f0;font-size:13.5px">' + val + '</span>';
+                                    }
+                                    const rowsHtml = lines.map((line,i) => {
+                                        const m = line.match(/^([^:：]+)[：:](.*)/);
+                                        if (m) {
+                                            const key = m[1].trim();
+                                            const val = m[2].trim();
+                                            const icon = getIcon(key);
+                                            const isLast = i === lines.length - 1;
+                                            return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;'
+                                                + (isLast ? '' : 'border-bottom:1px solid rgba(99,120,220,0.08);') + '">'
+                                                + '<span style="width:18px;height:18px;border-radius:6px;background:rgba(99,120,220,0.12);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">' + icon + '</span>'
+                                                + '<span style="min-width:76px;flex-shrink:0;font-size:11px;font-weight:600;color:#818cf8;letter-spacing:0.04em">' + key + '</span>'
+                                                + renderValue(val)
+                                                + '</div>';
+                                        }
+                                        return '<div style="padding:5px 0;color:#94a3b8;font-size:12.5px;padding-left:34px">' + line + '</div>';
+                                    }).join('');
+                                    return '<div style="display:inline-block;width:100%;margin:3px 0 10px">'
+                                        + '<div style="background:linear-gradient(145deg,#161b2e 0%,#0d1117 100%);border:1px solid rgba(99,120,220,0.28);border-radius:20px;padding:0;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.55),0 2px 0 rgba(255,255,255,0.04) inset;font-family:PingFang SC,system-ui,sans-serif">'
+                                        + '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px 9px;background:linear-gradient(90deg,rgba(99,120,220,0.18) 0%,rgba(168,85,247,0.10) 60%,transparent 100%);border-bottom:1px solid rgba(99,120,220,0.15)">'
+                                        + '<div style="width:24px;height:24px;border-radius:8px;background:rgba(99,120,220,0.2);border:1px solid rgba(99,120,220,0.35);display:flex;align-items:center;justify-content:center">'
+                                        + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>'
+                                        + '</div>'
+                                        + '<div style="flex:1">'
+                                        + '<div style="font-size:9px;font-weight:700;color:#4f6197;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:1px">STATUS</div>'
+                                        + '<div style="font-size:12.5px;font-weight:700;color:#c7d2fe;letter-spacing:0.02em">' + name + '</div>'
+                                        + '</div>'
+                                        + '<div style="display:flex;align-items:center;gap:6px">'
+                                        + '<span style="width:5px;height:5px;border-radius:50%;background:#34d399;box-shadow:0 0 10px #34d399;animation:pulse 2s infinite"></span>'
+                                        + '<span style="font-size:10px;color:#34d399;font-weight:600">ONLINE</span>'
+                                        + '</div>'
+                                        + '</div>'
+                                        + '<div style="padding:2px 14px 10px">' + rowsHtml + '</div>'
+                                        + '</div></div>';
+                                });
+                                return; // skip normal replacement for this script
+                            }
+                            // --- Status Card End ---
                             // 兼容 SillyTavern 字段：findRegex/regex, replaceString/replacement
                             let regexPattern = script.regex || script.findRegex;
                             let flags = script.flags || script.regexFlags || 'g';
@@ -1492,6 +1689,15 @@ const renderMarkdown = (text, role = 'assistant', skipRegex = false) => {
     if (!text) return '';
 
     let processed = text;
+
+    // Fallback image rendering: don't rely solely on regex scripts
+    if (!skipRegex) {
+        processed = processed.replace(/image###([^#]+)###/g, (match, prompt) => {
+            const safePrompt = (prompt || '').trim();
+            const imageUrl = buildImageCacheRenderUrl(safePrompt);
+            return '<div style="width: auto; height: auto; max-width: 100%; border: 8px solid transparent; background-image: linear-gradient(45deg, #FFC9D9, #CCE5FF); position: relative; border-radius: 16px; overflow: hidden; display: flex; justify-content: center; align-items: center; animation: gradientBG 3s ease infinite; box-shadow: 0 4px 15px rgba(204,229,255,0.3);"><div style="background: rgba(255,255,255,0.85); backdrop-filter: blur(5px); width: 100%; height: 100%; position: absolute; top: 0; left: 0;"></div><img src="' + imageUrl + '" alt="生成图片" loading="lazy" referrerpolicy="same-origin" style="max-width: 100%; height: auto; width: auto; display: block; object-fit: contain; transition: transform 0.3s ease; position: relative; z-index: 1;"></div><style>@keyframes gradientBG {0% {background-image: linear-gradient(45deg, #FFC9D9, #CCE5FF);}50% {background-image: linear-gradient(225deg, #FFC9D9, #CCE5FF);}100% {background-image: linear-gradient(45deg, #FFC9D9, #CCE5FF);}}</style>';
+        });
+    }
 
     // Apply regex for display (real-time)
     processed = skipRegex ? processed : processRegex(processed, { isDisplay: true, role: role });
@@ -2175,22 +2381,57 @@ ${rawHtml}
 
                 // Refactored generation logic
                 // Auto plot summary - runs in background after every N messages
-                const autoPlotSummary = async () => {
-                    if (!currentCharacter.value) return;
-                    const model = settings.plotSummaryModel || settings.suggestionModel || settings.model;
-                    const recentMsgs = chatHistory.value.slice(-20).map(m => ({
-                        role: m.role === 'user' ? 'user' : 'assistant',
-                        content: parseCot(m.content).main.substring(0, 500)
-                    }));
+                const runPlotSummary = async ({ manual = false } = {}) => {
+                    if (!currentCharacter.value) {
+                        showToast('请先选择一个角色', 'error');
+                        return false;
+                    }
+                    if (plotSummaryRunning.value || plotSummaryManualRunning.value) {
+                        showToast('剧情总结正在进行中，请稍后...', 'warning');
+                        return false;
+                    }
 
+                    const model = settings.plotSummaryModel || settings.suggestionModel || settings.model;
+                    const range = getPlotSummaryRange();
+                    const relevantMessages = getNonSystemMessages();
+                    const autoChunkSize = Math.max(1, Number(settings.plotSummaryInterval || 20));
+                    const startIndex = range.covered;
+                    const endIndex = manual ? range.total : Math.min(range.total, startIndex + autoChunkSize);
+                    const windowMessages = relevantMessages.slice(startIndex, endIndex);
+
+                    if (manual && range.pending <= 0) {
+                        showToast('没有未总结的新剧情', 'info');
+                        return false;
+                    }
+
+                    if (!windowMessages.length) {
+                        showToast('消息太少，暂时无法总结', 'info');
+                        return false;
+                    }
+
+                    if (manual) plotSummaryManualRunning.value = true;
+                    else plotSummaryRunning.value = true;
+
+                    const now = Date.now();
                     const existingMemory = currentCharacter.value.plot_memory || '';
+                    const dialogueBlock = windowMessages.map((m, idx) => {
+                        const roleName = m.role === 'user' ? (user.name || '用户') : (m.name || currentCharacter.value.name || '角色');
+                        return `${startIndex + idx + 1}. [${roleName}] ${parseCot(m.content).main.substring(0, 1000)}`;
+                    }).join('\n\n');
                     const prompt = `你是一个剧情记录助手。请根据以下最近的角色扮演对话，提取并总结重要的剧情信息。
 
-${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}【最近对话】已省略，见消息历史。
+${manual ? '【任务】请补全尚未写入剧情记忆的新内容，避免和已有记忆重复。\n\n' : ''}${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}【最近对话】\n${dialogueBlock}
 
 请输出一段简洁的剧情摘要，包含：关键事件、人物关系变化、重要物品/地点、角色状态。
 只输出新增或更新的内容，不要重复已有记忆。如果没有新的重要信息，输出"无新增"。
 直接输出摘要文字，不需要标签或格式。`;
+
+                    await persistPlotSummaryMeta({
+                        lastTriggerAt: now,
+                        lastRunMessageCount: range.total,
+                        lastMode: manual ? 'manual' : 'auto',
+                        lastError: ''
+                    });
 
                     try {
                         const url = settings.apiUrl.endsWith('/v1') ? `${settings.apiUrl}/chat/completions` : `${settings.apiUrl}/v1/chat/completions`;
@@ -2199,26 +2440,57 @@ ${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}�
                             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
                             body: JSON.stringify({
                                 model: model,
-                                messages: [...recentMsgs, { role: 'user', content: prompt }],
+                                messages: [{ role: 'user', content: prompt }],
                                 temperature: 0.3
                             })
                         });
-                        if (!res.ok) return;
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
                         const data = await res.json();
-                        const summary = (data.choices[0].message.content || '').trim();
-                        if (summary && !summary.includes('无新增')) {
-                            if (currentCharacter.value.plot_memory) {
-                                currentCharacter.value.plot_memory += '\n---\n' + summary;
-                            } else {
-                                currentCharacter.value.plot_memory = summary;
-                            }
-                            saveData();
-                            showToast('剧情记忆已自动更新', 'info');
+                        const summary = ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim();
+                        const newCoveredCount = endIndex;
+
+                        if (!summary || summary.includes('无新增')) {
+                            await persistPlotSummaryMeta({
+                                lastSuccessAt: Date.now(),
+                                lastSummaryPreview: summary || '无新增',
+                                lastCoveredMessageCount: newCoveredCount,
+                                successCount: (currentCharacter.value.plotSummaryMeta?.successCount || 0) + 1
+                            });
+                            showToast(manual ? '手动补总结完成：无新增剧情' : '自动剧情总结检查完成：无新增', 'info');
+                            return true;
                         }
+
+                        if (currentCharacter.value.plot_memory) {
+                            currentCharacter.value.plot_memory += '\n---\n' + summary;
+                        } else {
+                            currentCharacter.value.plot_memory = summary;
+                        }
+
+                        await persistPlotSummaryMeta({
+                            lastSuccessAt: Date.now(),
+                            lastSummaryPreview: summary.substring(0, 200),
+                            lastCoveredMessageCount: newCoveredCount,
+                            successCount: (currentCharacter.value.plotSummaryMeta?.successCount || 0) + 1
+                        });
+                        showToast(manual ? '已补总结未覆盖剧情' : '剧情记忆已自动更新', 'info');
+                        return true;
                     } catch (e) {
                         console.warn('Auto plot summary failed:', e);
+                        await persistPlotSummaryMeta({
+                            lastFailureAt: Date.now(),
+                            lastError: e.message || String(e),
+                            failureCount: (currentCharacter.value.plotSummaryMeta?.failureCount || 0) + 1
+                        });
+                        showToast((manual ? '手动剧情总结失败: ' : '自动剧情总结失败: ') + (e.message || '未知错误'), 'error');
+                        return false;
+                    } finally {
+                        if (manual) plotSummaryManualRunning.value = false;
+                        else plotSummaryRunning.value = false;
                     }
                 };
+
+                const autoPlotSummary = async () => runPlotSummary({ manual: false });
+                const manualPlotSummary = async () => runPlotSummary({ manual: true });
 
                 // Build reasoning/thinking parameters based on model name
                 const buildReasoningParams = (model, effort) => {
@@ -2907,6 +3179,7 @@ ${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}�
                                             });
                                             chatHistory.value.push(assistantMessage);
                                             responseContent = content;
+                                            warmImageCache(extractImagePrompts(content));
                                             
                                             // Start/Update timer for non-streaming response
                                             generationStartTime = Date.now();
@@ -2953,6 +3226,7 @@ ${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}�
                                                 isCotOpen: false
                                             });
                                             chatHistory.value.push(assistantMessage);
+                                            warmImageCache(extractImagePrompts(content));
                                             
                                             // Start/Update timer for non-standard streaming response
                                             generationStartTime = Date.now();
@@ -3099,8 +3373,8 @@ ${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}�
 
                                 // --- Auto Plot Summary ---
                                 if (settings.plotSummaryInterval > 0 && currentCharacter.value) {
-                                    const msgCount = chatHistory.value.filter(m => m.role !== 'system').length;
-                                    if (msgCount > 0 && msgCount % settings.plotSummaryInterval === 0) {
+                                    const range = getPlotSummaryRange();
+                                    if (range.pending >= settings.plotSummaryInterval) {
                                         autoPlotSummary();
                                     }
                                 }
@@ -3171,6 +3445,8 @@ ${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}�
                         personality: '',
                         scenario: '',
                         mes_example: '',
+                        plot_memory: '',
+                        plotSummaryMeta: {},
                         uuid: generateUUID(),
                         createdAt: Date.now()
                     };
@@ -3297,7 +3573,7 @@ ${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}�
                     const imageGenRegexContent = {
                         name: imageGenRegexName,
                         regex: '/image###([^>]+)###/g',
-                        replacement: '<div style="width: auto; height: auto; max-width: 100%; border: 8px solid transparent; background-image: linear-gradient(45deg, #FFC9D9, #CCE5FF); position: relative; border-radius: 16px; overflow: hidden; display: flex; justify-content: center; align-items: center; animation: gradientBG 3s ease infinite; box-shadow: 0 4px 15px rgba(204,229,255,0.3);"><div style="background: rgba(255,255,255,0.85); backdrop-filter: blur(5px); width: 100%; height: 100%; position: absolute; top: 0; left: 0;"></div><img src="https://std.loliyc.com/generate?tag=$1&token=' + imageGenToken + '&model=nai-diffusion-4-5-full&artist=' + targetArtists + '&size=' + settings.imageSize + '&steps=40&scale=6&cfg=0&sampler=k_dpmpp_2m_sde&negative={{{{bad anatomy}}}},{bad feet},bad hands,{{{bad proportions}}},{blurry},cloned face,cropped,{{{deformed}}},{{{disfigured}}},error,{{{extra arms}}},{extra digit},{{{extra legs}}},extra limbs,{{extra limbs}},{fewer digits},{{{fused fingers}}},gross proportions,ink eyes,ink hair,jpeg artifacts,{{{{long neck}}}},low quality,{malformed limbs},{{missing arms}},{missing fingers},{{missing legs}},{{{more than 2 nipples}}},mutated hands,{{{mutation}}},normal quality,owres,{{poorly drawn face}},{{poorly drawn hands}},reen eyes,signature,text,{{too many fingers}},{{{ugly}}},username,uta,watermark,worst quality,{{{more than 2 legs}}}&nocache=0&noise_schedule=karras"  alt="生成图片" style="max-width: 100%; height: auto; width: auto; display: block; object-fit: contain; transition: transform 0.3s ease; position: relative; z-index: 1;"></div><style>@keyframes gradientBG {0% {background-image: linear-gradient(45deg, #FFC9D9, #CCE5FF);}50% {background-image: linear-gradient(225deg, #FFC9D9, #CCE5FF);}100% {background-image: linear-gradient(45deg, #FFC9D9, #CCE5FF);}}</style>',
+                        replacement: '<div style="width: auto; height: auto; max-width: 100%; border: 8px solid transparent; background-image: linear-gradient(45deg, #FFC9D9, #CCE5FF); position: relative; border-radius: 16px; overflow: hidden; display: flex; justify-content: center; align-items: center; animation: gradientBG 3s ease infinite; box-shadow: 0 4px 15px rgba(204,229,255,0.3);"><div style="background: rgba(255,255,255,0.85); backdrop-filter: blur(5px); width: 100%; height: 100%; position: absolute; top: 0; left: 0;"></div><img src="' + buildImageCacheRenderUrl('$1') + '" alt="生成图片" loading="lazy" referrerpolicy="same-origin" style="max-width: 100%; height: auto; width: auto; display: block; object-fit: contain; transition: transform 0.3s ease; position: relative; z-index: 1;"></div><style>@keyframes gradientBG {0% {background-image: linear-gradient(45deg, #FFC9D9, #CCE5FF);}50% {background-image: linear-gradient(225deg, #FFC9D9, #CCE5FF);}100% {background-image: linear-gradient(45deg, #FFC9D9, #CCE5FF);}}</style>',
                         placement: [2],
                         markdownOnly: true,
                         promptOnly: false,
@@ -3477,6 +3753,11 @@ ${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}�
 
                     await loadSummaryStateForCharacter(char);
                     resetLoadedChatMessages();
+
+                    if (!char.plotSummaryMeta) {
+                        char.plotSummaryMeta = {};
+                    }
+                    syncPlotSummaryStatus();
 
                     // Load Character Specific Data
                     if (char.worldInfo) {
@@ -4806,6 +5087,7 @@ ${existingMemory ? '【已有剧情记忆】\n' + existingMemory + '\n\n' : ''}�
                     applyTheme, // Theme system
                     apiStatus, apiLatency, imageGenStatus, imageGenLatency, checkAllStatuses, // Status Exports
                     showQuotaPanel, quotaValue, quotaLoading, quotaError, quotaAvailable, fetchQuota, // Quota exports
+                    plotSummaryRunning, plotSummaryManualRunning, plotSummaryStatus, plotSummaryPendingCount, formatRelativeTime, manualPlotSummary,
                     toggleMobileMenu: () => showMobileMenu.value = !showMobileMenu.value,
                     scrollToPreviousMessage, scrollToNextMessage,
                     fetchModels, selectModel, sendMessage, autoResizeInput, stopGeneration, clearChat,
