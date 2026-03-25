@@ -1329,13 +1329,14 @@
                         </button>
                     </div>
 
-                    <ul class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar overflow-x-hidden">
-                        <li v-for="(char, index) in characters" :key="index">
-                            <a @click="switchCharacter(index)" :title="char.name"
+                    <ul ref="sidebarList" @scroll="handleSidebarScroll" class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar overflow-x-hidden relative">
+                        <div :style="{ height: sidebarPaddingTop + 'px' }" class="w-full shrink-0"></div>
+                        <li v-for="char in virtualCharacters" :key="char.id || char._index">
+                            <a @click="switchCharacter(char._index)" :title="char.name"
                                 class="flex items-center gap-3 py-3 px-3 rounded-xl transition-all border border-transparent w-full max-w-full overflow-hidden relative"
-                                :class="{ 'bg-base-200 border-base-300 shadow-sm': currentCharacterIndex === index, 'hover:bg-base-100 hover:border-base-200': currentCharacterIndex !== index }">
+                                :class="{ 'bg-base-200 border-base-300 shadow-sm': currentCharacterIndex === char._index, 'hover:bg-base-100 hover:border-base-200': currentCharacterIndex !== char._index }">
                                 <!-- Active Indicator -->
-                                <div v-if="currentCharacterIndex === index"
+                                <div v-if="currentCharacterIndex === char._index"
                                     class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full">
                                 </div>
 
@@ -1343,6 +1344,7 @@
                                     <div
                                         class="bg-gradient-to-br from-neutral to-neutral-focus text-neutral-content rounded-xl w-10 h-10 shadow-sm ring-1 ring-base-content/5">
                                         <img v-if="char.avatar" :src="char.avatar" :key="char.avatar"
+                                            loading="lazy"
                                             class="w-full h-full object-cover rounded-xl" />
                                         <span v-else class="text-lg font-bold">{{ (char.name ||
                                             'A').charAt(0).toUpperCase() }}</span>
@@ -1350,10 +1352,10 @@
                                 </div>
                                 <div class="flex-1 w-0 flex flex-col justify-center min-h-[2.5rem]">
                                     <div class="font-bold text-sm break-words line-clamp-2 leading-tight"
-                                        :class="{ 'text-primary': currentCharacterIndex === index }">{{ char.name ||
+                                        :class="{ 'text-primary': currentCharacterIndex === char._index }">{{ char.name ||
                                         '未命名角色' }}</div>
                                 </div>
-                                <button @click.stop="requestDeleteCharacter(index)"
+                                <button @click.stop="requestDeleteCharacter(char._index)"
                                     class="btn btn-ghost btn-xs btn-square text-base-content/20 hover:text-error hover:bg-error/10 shrink-0 self-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -1364,6 +1366,7 @@
                                 </button>
                             </a>
                         </li>
+                        <div :style="{ height: sidebarBottomHeight + 'px' }" class="w-full shrink-0"></div>
                     </ul>
 
                     <div class="divider my-2 opacity-50"></div>
@@ -1427,6 +1430,25 @@
                     };
                 });
 
+                const debounce = (fn, delay) => {
+                    let timeout;
+                    return (...args) => {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => fn(...args), delay);
+                    };
+                };
+
+                const generateUUID = () => {
+                    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                        return crypto.randomUUID();
+                    }
+                    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                        const r = Math.random() * 16 | 0;
+                        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                        return v.toString(16);
+                    });
+                };
+
                 // State
                 const showSettings = ref(false);
                 const showPreview = ref(false);
@@ -1479,6 +1501,50 @@
                 // Persist active index
                 watch(currentCharacterIndex, (newVal) => {
                     localStorage.setItem('ai_chargen_active_index', newVal);
+                });
+
+                const sidebarScrollTop = ref(0);
+                const sidebarVisibleHeight = ref(0);
+                const sidebarList = ref(null);
+                const itemHeight = 72;
+
+                const handleSidebarScroll = (e) => {
+                    sidebarScrollTop.value = e.target.scrollTop;
+                    sidebarVisibleHeight.value = e.target.clientHeight;
+                };
+
+                const virtualCharacters = computed(() => {
+                    if (!characters.value) return [];
+                    const start = Math.floor(sidebarScrollTop.value / itemHeight);
+                    const count = Math.ceil(sidebarVisibleHeight.value / itemHeight) + 4;
+                    const offset = Math.max(0, start - 2);
+
+                    return characters.value
+                        .slice(offset, Math.min(characters.value.length, start + count))
+                        .map((char, i) => ({
+                            ...char,
+                            _index: offset + i
+                        }));
+                });
+
+                const sidebarPaddingTop = computed(() => {
+                    const start = Math.floor(sidebarScrollTop.value / itemHeight);
+                    return Math.max(0, start - 2) * itemHeight;
+                });
+
+                const sidebarBottomHeight = computed(() => {
+                    const renderedCount = virtualCharacters.value.length;
+                    const start = Math.floor(sidebarScrollTop.value / itemHeight);
+                    const offset = Math.max(0, start - 2);
+                    return Math.max(0, (characters.value.length - offset - renderedCount) * itemHeight);
+                });
+
+                onMounted(() => {
+                    Vue.nextTick(() => {
+                        if (sidebarList.value) {
+                            sidebarVisibleHeight.value = sidebarList.value.clientHeight;
+                        }
+                    });
                 });
 
                 // Progress State
@@ -1612,6 +1678,7 @@
 
                 // Default Character Template
                 const createEmptyCharacter = () => ({
+                    id: generateUUID(),
                     name: '',
                     description: '',
                     personality: '',
@@ -1648,7 +1715,9 @@
                         // 1. Try to load from IndexedDB
                         const saved = await localforage.getItem('ai_chargen_characters');
                         if (saved) {
-                            characters.value = JSON.parse(saved);
+                            const parsed = JSON.parse(saved);
+                            parsed.forEach(c => { if (!c.id) c.id = generateUUID(); });
+                            characters.value = parsed;
                         } else {
                             // 2. Migration: Try to load from localStorage
                             const lsSaved = localStorage.getItem('ai_chargen_characters');
@@ -1656,9 +1725,10 @@
                                 console.log('Migrating data from localStorage to IndexedDB...');
                                 try {
                                     const parsed = JSON.parse(lsSaved);
+                                    parsed.forEach(c => { if (!c.id) c.id = generateUUID(); });
                                     characters.value = parsed;
                                     // Save to IndexedDB
-                                    await localforage.setItem('ai_chargen_characters', lsSaved);
+                                    await localforage.setItem('ai_chargen_characters', JSON.stringify(parsed));
                                     showToast('已成功迁移数据至大容量存储', 'success');
                                     // Optional: Clear old localStorage to free up space, but keeping for safety for now
                                 } catch (e) {
@@ -1689,13 +1759,15 @@
                 // Trigger load
                 loadData();
 
-                // Save to localforage whenever characters change
-                watch(characters, async (newVal) => {
+                const debouncedSave = debounce(async (newVal) => {
+                    const normalized = newVal.map(char => (char.id ? char : { ...char, id: generateUUID() }));
+                    if (normalized.some((char, index) => char !== newVal[index])) {
+                        characters.value = normalized;
+                    }
                     if (!isLoaded.value) return; // Don't save before initial load
 
                     try {
-                        // Use standard JSON string to keep consistency
-                        await localforage.setItem('ai_chargen_characters', JSON.stringify(newVal));
+                        await localforage.setItem('ai_chargen_characters', JSON.stringify(normalized));
                         if (storageQuotaExceeded.value) {
                             storageQuotaExceeded.value = false;
                         }
@@ -1706,6 +1778,12 @@
                             showToast('存储空间仍然不足', 'error');
                         }
                     }
+                }, 800);
+
+                // Save to localforage whenever characters change
+                watch(characters, (newVal) => {
+                    if (!isLoaded.value) return; // Don't save before initial load
+                    debouncedSave(newVal);
                 }, { deep: true });
 
                 // Computed
@@ -2929,7 +3007,9 @@ ${options.generateExtra ? `### World Info
                         // 优化分割正则：
                         // 使用白名单前瞻，只有当 ### 后面紧跟已知的段落标题（不区分大小写）时才认为是新段落的开始
                         // 这样可以防止 JSON 或 Regex 中的 ### (例如 image###tag) 被误判为段落分隔
-                        const regex = new RegExp(`### ${section.key}\\s*([\\s\\S]*?)(?=###\\s*(?:${sectionKeys})|$)`, 'i');
+                        const EscapedSectionKey = section.key.replace(/ /g, '\\s*');
+                        const EscapedSectionKeys = sectionKeys.replace(/ /g, '\\s*');
+                        const regex = new RegExp(`#{2,6}\\s*${EscapedSectionKey}(?:\\s*[(（][^)）]*[)）])?[:：]?\\s*\\n?([\\s\\S]*?)(?=#{2,6}\\s*(?:${EscapedSectionKeys})|$)`, 'i');
                         const match = text.match(regex);
                         if (match) {
                             const content = match[1].trim();
@@ -2991,7 +3071,19 @@ ${options.generateExtra ? `### World Info
                                         jsonStr = arrayMatch[0];
                                     }
 
-                                    const parsed = JSON.parse(jsonStr);
+                                    const fixJson = (str) => {
+                                        try {
+                                            return JSON.parse(str);
+                                        } catch (err) {
+                                            const fixed = str.replace(/("(?:content|comment|keys|scriptName|findRegex|replaceString)"\s*:\s*")([\s\S]*?)("\s*[,\]}])/g, (m, p1, p2, p3) => {
+                                                const escapedP2 = p2.replace(/(?<!\\)"/g, '\\"');
+                                                return p1 + escapedP2 + p3;
+                                            });
+                                            return JSON.parse(fixed);
+                                        }
+                                    };
+
+                                    const parsed = fixJson(jsonStr);
                                     if (Array.isArray(parsed)) {
                                         currentCharacter.value.worldInfo = parsed.map(p => {
                                             let pos = p.position;
@@ -3037,7 +3129,19 @@ ${options.generateExtra ? `### World Info
                                         jsonStr = arrayMatch[0];
                                     }
 
-                                    const parsed = JSON.parse(jsonStr);
+                                    const fixJson = (str) => {
+                                        try {
+                                            return JSON.parse(str);
+                                        } catch (err) {
+                                            const fixed = str.replace(/("(?:content|comment|keys|scriptName|findRegex|replaceString)"\s*:\s*")([\s\S]*?)("\s*[,\]}])/g, (m, p1, p2, p3) => {
+                                                const escapedP2 = p2.replace(/(?<!\\)"/g, '\\"');
+                                                return p1 + escapedP2 + p3;
+                                            });
+                                            return JSON.parse(fixed);
+                                        }
+                                    };
+
+                                    const parsed = fixJson(jsonStr);
                                     if (Array.isArray(parsed)) {
                                         currentCharacter.value.regexScripts = parsed.map(p => ({
                                             scriptName: p.scriptName || 'Script',
@@ -3150,18 +3254,6 @@ ${options.generateExtra ? `### World Info
                             })) : undefined
                         }
                     };
-                };
-
-                // UUID Fallback for non-secure contexts
-                const generateUUID = () => {
-                    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-                        return crypto.randomUUID();
-                    }
-                    // Fallback implementation
-                    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                        return v.toString(16);
-                    });
                 };
 
                 // 文件名净化函数
@@ -3403,6 +3495,11 @@ ${options.generateExtra ? `### World Info
                     storageQuotaExceeded,
                     generationProgress,
                     generationStatus,
+                    virtualCharacters,
+                    sidebarPaddingTop,
+                    sidebarBottomHeight,
+                    sidebarList,
+                    handleSidebarScroll,
                     promptInput,
                     autoResize,
                     isAvatarLoading,

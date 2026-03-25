@@ -39,6 +39,21 @@ html {
             background: #d1d5db;
         }
 
+        .chat-input-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .chat-input-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-input-scrollbar::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 10px;
+        }
+        .chat-input-scrollbar:hover::-webkit-scrollbar-thumb,
+        .chat-input-scrollbar:focus::-webkit-scrollbar-thumb {
+            background: #e5e7eb;
+        }
+
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -146,10 +161,80 @@ html {
                 height: 0 !important;
             }
             
-            /* Hide scrollbar for IE, Edge and Firefox */
+            /* Hide scrollbar for IE, Edge and Firefox + kill blur on mobile */
             * {
                 -ms-overflow-style: none !important;  /* IE and Edge */
                 scrollbar-width: none !important;  /* Firefox */
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+            }
+
+            [class*="blur-"]:not(.char-bg-blur) {
+                --tw-blur: initial !important;
+                filter: none !important;
+            }
+
+            .mobile-overlay {
+                background-color: rgba(0, 0, 0, 0.45) !important;
+            }
+
+            .desc-panel-overlay {
+                background-color: rgba(0, 0, 0, 0.12) !important;
+            }
+
+            .desc-panel {
+                background-color: rgba(255, 255, 255, 0.97) !important;
+            }
+
+            .desc-panel-decor {
+                background-color: rgba(255, 255, 255, 0.55) !important;
+            }
+
+            .desc-close-btn:hover {
+                background-color: rgba(255, 255, 255, 0.75) !important;
+            }
+
+            .chat-header-bar {
+                background-color: rgba(255, 255, 255, 0.94) !important;
+            }
+
+            .msg-name-tag {
+                background-color: rgba(255, 255, 255, 0.7) !important;
+            }
+
+            .msg-bubble-glass {
+                background-color: rgba(255, 255, 255, 0.88) !important;
+            }
+
+            .summary-msg-box {
+                background-color: rgba(238, 242, 255, 0.92) !important;
+            }
+
+            .typing-bubble {
+                background-color: rgba(255, 255, 255, 0.88) !important;
+            }
+
+            .typing-timer-badge {
+                background-color: rgba(255, 255, 255, 0.7) !important;
+            }
+
+            .input-area-mobile {
+                background-color: rgba(255, 255, 255, 0.96) !important;
+                border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+            }
+
+            .suggest-btn {
+                background-color: rgba(255, 255, 255, 0.98) !important;
+            }
+
+            .toolbar-btn {
+                background-color: rgba(255, 255, 255, 0.95) !important;
+            }
+
+            .glass-panel {
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                background: rgba(255, 255, 255, 0.95) !important;
             }
         }
         
@@ -1082,4 +1167,35 @@ opacity: 0;
         /* Firefox scrollbar */
         html.dark * {
             scrollbar-color: #27272a #000000;
+        }
+
+        .no-blur * {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        .no-blur .bg-white\/70,
+        .no-blur .bg-white\/80,
+        .no-blur .bg-white\/90,
+        .no-blur .bg-white\/95,
+        .no-blur .glass-panel {
+            background-color: rgba(255, 255, 255, 0.95) !important;
+        }
+
+        .no-blur .bg-blue-50\/85 {
+            background-color: rgba(239, 246, 255, 0.95) !important;
+        }
+
+        .no-blur .bg-gray-50\/50,
+        .no-blur .bg-gray-50\/80 {
+            background-color: rgba(249, 250, 251, 0.95) !important;
+        }
+
+        .no-blur .bg-indigo-50\/80,
+        .no-blur .bg-indigo-950\/60 {
+            background-color: rgba(224, 231, 255, 0.92) !important;
+        }
+
+        .no-blur .bg-black\/30 {
+            background-color: rgba(0, 0, 0, 0.5) !important;
         }
